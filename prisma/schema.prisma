@@ -1,0 +1,188 @@
+// NCH 3.0 (Prototype) — Prisma Schema
+// National Consumer Helpline — Complaint Registration & Escalation Tracking
+// ~10 small tables; SQLite for the academic prototype.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  // Relative to the prisma/ folder → resolves to <project>/db/custom.db.
+  // No .env required. To use a different file, replace with env("DATABASE_URL")
+  // and set DATABASE_URL="file:./custom.db" in a .env file at the project root.
+  url      = "file:../db/custom.db"
+}
+
+// ─── Accounts ────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  role         String // 'consumer' | 'officer' | 'supervisor' | 'company'
+  name         String
+  email        String   @unique
+  phone        String   @default("")
+  passwordHash String
+  address      String?
+  // Officer profile fields (optional)
+  designation  String?
+  sectors      String? // JSON array of sector names
+  // Company portal login link
+  companyId    String?
+  company      Company? @relation(fields: [companyId], references: [id])
+  createdAt    DateTime @default(now())
+
+  consumerComplaints Complaint[]        @relation("ConsumerComplaints")
+  assignedComplaints Complaint[]        @relation("AssignedComplaints")
+  sessions           Session[]
+  notifications      Notification[]
+}
+
+model Company {
+  id                 String  @id @default(cuid())
+  name               String
+  sector             String
+  registrationNumber String  @default("")
+  contactEmail       String
+  contactPhone       String  @default("")
+  nodalOfficer       String  @default("")
+  users              User[]
+  complaints         Complaint[]
+}
+
+model Session {
+  id        String   @id // random token
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// ─── Complaints ──────────────────────────────────────────────────────────────
+
+model Complaint {
+  id                  String    @id @default(cuid())
+  docketNumber        String    @unique
+  consumerId          String
+  consumer            User      @relation("ConsumerComplaints", fields: [consumerId], references: [id])
+  companyId           String
+  company             Company   @relation(fields: [companyId], references: [id])
+  sector              String
+  category            String
+  subCategory         String    @default("")
+  subject             String
+  description         String
+  amount              Float?
+  stateCode           String    @default("DL")
+  status              String    @default("Registered")
+  priority            String    @default("Medium")
+  channel             String    @default("Online Portal")
+  assignedOfficerId   String?
+  assignedOfficer     User?     @relation("AssignedComplaints", fields: [assignedOfficerId], references: [id])
+  // SLA — fixed at creation: deadline = createdAt + slaHours. Never resets on updates (anti-timer-tampering).
+  slaHours            Int
+  slaDeadline         DateTime
+  // Escalation flags — set by the RULES ENGINE only. AI never decides escalation.
+  escalationFlagged   Boolean   @default(false)
+  escalationReasons   String? // JSON array of rule-generated reasons
+  escalationReviewedBy String?
+  supervisorNotes     String?
+  // Workflow status before a supervisor moved the case into "Escalation Review".
+  // Restored when the supervisor dismisses the flag (prevents stuck review status).
+  preEscalationStatus String?
+  // Set when a supervisor dismisses a rule flag. Suppresses automatic re-flagging
+  // of the SAME condition (fixed SLA deadline) until new escalation evidence appears.
+  escalationDismissedAt DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  resolvedAt          DateTime?
+  closedAt            DateTime?
+
+  events       ComplaintEvent[]
+  documents    Document[]
+  remarks      OfficerRemark[]
+  responses    CompanyResponse[]
+  feedback     Feedback?
+}
+
+model ComplaintEvent {
+  id          String   @id @default(cuid())
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  type        String // e.g. REGISTERED, STATUS_CHANGE, FORWARDED, RESPONSE, ESCALATION, FEEDBACK, AI
+  title       String
+  description String   @default("")
+  actorName   String
+  actorRole   String // 'System' | 'Consumer' | 'NCH Officer' | 'Organization' | 'Supervisor'
+  createdAt   DateTime @default(now())
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  name        String
+  type        String   @default("PDF")
+  size        String   @default("—")
+  uploadedBy  String
+  createdAt   DateTime @default(now())
+}
+
+model OfficerRemark {
+  id          String   @id @default(cuid())
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  officerId   String
+  officerName String
+  remark      String
+  isInternal  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model CompanyResponse {
+  id                     String    @id @default(cuid())
+  complaintId            String
+  complaint              Complaint @relation(fields: [complaintId], references: [id])
+  responseText           String
+  actionTaken            String    @default("")
+  claimStatus            String // 'Resolution Claimed' | 'Partial Resolution' | 'Rejected' | 'Under Process'
+  expectedResolutionDate DateTime?
+  respondedById          String
+  respondedByName        String
+  createdAt              DateTime  @default(now())
+}
+
+model Feedback {
+  id           String   @id @default(cuid())
+  complaintId  String   @unique
+  complaint    Complaint @relation(fields: [complaintId], references: [id])
+  rating       Int
+  comments     String   @default("")
+  confirmed    Boolean  @default(false)
+  disputed     Boolean  @default(false)
+  disputeReason String?
+  createdAt    DateTime @default(now())
+}
+
+// ─── Notifications & AI cache ────────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   @default("info") // info | warning | success | error
+  title     String
+  detail    String   @default("")
+  link      String   @default("#")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AiCache {
+  id        String   @id @default(cuid())
+  cacheKey  String   @unique // sha256(feature + payload)
+  feature   String
+  provider  String
+  text      String
+  createdAt DateTime @default(now())
+}

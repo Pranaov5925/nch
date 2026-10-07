@@ -2,13 +2,14 @@
 
 // NCH 3.0 — Company Complaint Response Form (ported; live API)
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Send, FileText, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Send, FileText, CheckCircle2, Download, Eye, UploadCloud } from 'lucide-react';
 import { AppLayout, LoadingBlock, ErrorBlock } from '@/components/nch/AppLayout';
 import { StatusBadge, PriorityBadge, Button, FormField, Textarea, Select, Input, AlertBanner } from '@/components/nch/ui';
+import { DocumentPreviewModal } from '@/components/nch/DocumentPreviewModal';
 import { api, useFetch } from '@/lib/nch/client';
-import type { Complaint } from '@/lib/nch/types';
+import type { Complaint, Document } from '@/lib/nch/types';
 
 export default function CompanyComplaintResponse() {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +25,12 @@ export default function CompanyComplaintResponse() {
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState('');
+
+  // Document state
+  const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [docError, setDocError] = useState('');
+  const docInputRef = useRef<HTMLInputElement>(null);
 
   if (loading) return <AppLayout><LoadingBlock /></AppLayout>;
   if (error || !complaint) {
@@ -62,6 +69,29 @@ export default function CompanyComplaintResponse() {
       setApiError((err as Error).message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingDoc(true);
+    setDocError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`/api/complaints/${complaint.id}/documents`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to upload document');
+      await refetch();
+      if (docInputRef.current) docInputRef.current.value = '';
+    } catch (err) {
+      setDocError((err as Error).message);
+    } finally {
+      setUploadingDoc(false);
     }
   };
 
@@ -120,21 +150,77 @@ export default function CompanyComplaintResponse() {
             </div>
           </div>
 
-          {/* Documents */}
-          {complaint.documents.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded p-4">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Supporting Documents</p>
-              <ul className="space-y-2">
-                {complaint.documents.map(doc => (
-                  <li key={doc.id} className="flex items-center gap-2 text-xs text-slate-600">
-                    <FileText size={13} className="text-slate-400 shrink-0" />
-                    <span className="flex-1 truncate">{doc.name}</span>
-                    <span className="text-slate-400">{doc.size}</span>
-                  </li>
-                ))}
-              </ul>
+          {/* Supporting Documents & Proof Upload */}
+          <div className="bg-white border border-slate-200 rounded p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Case Documents & Evidence</p>
+                <p className="text-2xs text-slate-400 mt-0.5">Consumer receipts and company action records</p>
+              </div>
+              <div>
+                <input
+                  type="file"
+                  ref={docInputRef}
+                  onChange={handleDocUpload}
+                  className="hidden"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  icon={<UploadCloud size={13} />}
+                  loading={uploadingDoc}
+                  onClick={() => docInputRef.current?.click()}
+                >
+                  Attach Action Proof
+                </Button>
+              </div>
             </div>
-          )}
+            {docError && (
+              <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2">{docError}</p>
+            )}
+
+            {complaint.documents.length === 0 ? (
+              <p className="text-xs text-slate-400 py-3 text-center">No documents attached to this case.</p>
+            ) : (
+              <ul className="space-y-2">
+                {complaint.documents.map(doc => {
+                  const isImg = ['PNG', 'JPG', 'JPEG', 'WEBP', 'IMAGE'].includes(doc.type.toUpperCase());
+                  return (
+                    <li key={doc.id} className="flex items-center justify-between gap-2 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText size={15} className={isImg ? 'text-sky-600 shrink-0' : 'text-rose-600 shrink-0'} />
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-800 truncate">{doc.name}</p>
+                          <p className="text-2xs text-slate-400">
+                            {doc.type} · {doc.size} · Uploaded by <strong className="text-slate-600">{doc.uploadedBy}</strong>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewDoc(doc)}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-2xs font-medium text-slate-700 bg-white border border-slate-200 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                        >
+                          <Eye size={12} />
+                          <span>Preview</span>
+                        </button>
+                        <a
+                          href={`/api/documents/${doc.id}?download=1`}
+                          download={doc.name}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-2xs font-medium text-nch-blue-700 bg-nch-blue-50 border border-nch-blue-200 rounded hover:bg-nch-blue-100 transition-colors cursor-pointer"
+                        >
+                          <Download size={12} />
+                          <span>Download</span>
+                        </a>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
 
           {/* Consumer dispute notice */}
           {complaint.consumerFeedback?.disputed && (
@@ -283,6 +369,14 @@ export default function CompanyComplaintResponse() {
           </div>
         </div>
       </div>
+
+      {/* Document Preview Modal */}
+      <DocumentPreviewModal
+        document={previewDoc}
+        docketNumber={complaint.docketNumber}
+        open={Boolean(previewDoc)}
+        onClose={() => setPreviewDoc(null)}
+      />
     </AppLayout>
   );
 }

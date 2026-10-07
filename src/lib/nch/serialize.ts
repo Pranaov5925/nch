@@ -159,6 +159,7 @@ export function serializeComplaint(c: PrismaComplaint, opts: { includeInternal?:
       size: d.size,
       uploadedBy: d.uploadedBy,
       uploadedAt: fmtDateTime(d.createdAt),
+      url: `/api/documents/${d.id}`,
     })),
     officerRemarks: (c.remarks ?? [])
       .filter((r) => includeInternal || !r.isInternal)

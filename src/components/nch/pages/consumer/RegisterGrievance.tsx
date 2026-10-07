@@ -4,13 +4,13 @@
 // Note: file upload is intentionally out of scope for this prototype
 // (per the finalised blueprint) — the upload UI is shown disabled.
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, ChevronRight, Info } from 'lucide-react';
+import { Check, ChevronRight, Info, UploadCloud, FileText, X, Paperclip } from 'lucide-react';
 import { AppLayout, PageHeader } from '@/components/nch/AppLayout';
 import { Button, FormField, Input, Select, Textarea, AlertBanner } from '@/components/nch/ui';
 import { api, useFetch } from '@/lib/nch/client';
-import { SECTORS } from '@/lib/nch/types';
+import { SECTORS, type Complaint } from '@/lib/nch/types';
 import { slaHoursForSector } from '@/lib/nch/constants';
 
 const CATEGORIES: Record<string, string[]> = {
@@ -39,6 +39,8 @@ export default function RegisterGrievance() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [generalError, setGeneralError] = useState('');
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedCompany = companies.find(c => c.id === step1.companyId);
   const categories = CATEGORIES[step1.sector] ?? CATEGORIES['Others'];
@@ -91,6 +93,19 @@ export default function RegisterGrievance() {
           channel: 'Online Portal',
         }),
       });
+
+      // Upload attached files if any
+      if (attachedFiles.length > 0) {
+        for (const file of attachedFiles) {
+          const formData = new FormData();
+          formData.append('file', file);
+          await fetch(`/api/complaints/${complaint.id}/documents`, {
+            method: 'POST',
+            body: formData,
+          }).catch(err => console.error('Failed to upload attachment:', err));
+        }
+      }
+
       navigate('/consumer/register/confirmation', {
         state: {
           docket: complaint.docketNumber,
@@ -254,12 +269,66 @@ export default function RegisterGrievance() {
                       <SummaryRow label="SLA window (prototype)" value={`${slaHoursForSector(step1.sector)}h`} />
                     </div>
 
-                    <div className="rounded border border-slate-200 bg-slate-50 px-4 py-3 flex items-start gap-2 text-xs text-slate-500">
-                      <Info size={13} className="shrink-0 mt-0.5 text-slate-400" />
-                      <p>
-                        Supporting documents cannot be uploaded in this prototype (feature intentionally out of scope).
-                        Please retain your receipts and correspondence; reference their details in your description.
-                      </p>
+                    {/* Supporting Documents Upload */}
+                    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50/70 p-4 space-y-3">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                        <div>
+                          <p className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                            <Paperclip size={14} className="text-nch-blue-600" />
+                            Attach Supporting Documents (Optional)
+                          </p>
+                          <p className="text-2xs text-slate-500 mt-0.5">
+                            Upload bills, invoices, warranty slips, or defect photos (PDF, PNG, JPG up to 15MB)
+                          </p>
+                        </div>
+                        <div>
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            multiple
+                            onChange={e => {
+                              if (e.target.files) {
+                                const newFiles = Array.from(e.target.files);
+                                setAttachedFiles(prev => [...prev, ...newFiles]);
+                                if (fileInputRef.current) fileInputRef.current.value = '';
+                              }
+                            }}
+                            className="hidden"
+                            accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            icon={<UploadCloud size={14} />}
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            Add Files
+                          </Button>
+                        </div>
+                      </div>
+
+                      {attachedFiles.length > 0 && (
+                        <div className="space-y-1.5 pt-2 border-t border-slate-200">
+                          {attachedFiles.map((f, i) => (
+                            <div key={i} className="flex items-center justify-between gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <FileText size={14} className="text-nch-blue-600 shrink-0" />
+                                <span className="font-medium text-slate-800 truncate">{f.name}</span>
+                                <span className="text-2xs text-slate-400">({Math.round(f.size / 1024)} KB)</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))}
+                                className="text-slate-400 hover:text-red-600 p-1 rounded"
+                                title="Remove file"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div>

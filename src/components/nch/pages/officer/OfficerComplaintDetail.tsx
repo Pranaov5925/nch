@@ -5,17 +5,19 @@
 // INVARIANT: the officer acts; AI only assists. Escalation decisions belong
 // to the Supervisor (human-in-the-loop), driven by the rules engine.
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Send, AlertTriangle, CheckCircle2, XCircle, FileText, Clock,
-  User, Building2, Lock, Info, Star, Bot, UserCheck, ShieldAlert
+  User, Building2, Lock, Info, Star, Bot, UserCheck, ShieldAlert,
+  Download, Eye, UploadCloud
 } from 'lucide-react';
 import { AppLayout, LoadingBlock, ErrorBlock } from '@/components/nch/AppLayout';
 import { StatusBadge, PriorityBadge, CaseTimeline, Button, AlertBanner, Modal, Textarea } from '@/components/nch/ui';
+import { DocumentPreviewModal } from '@/components/nch/DocumentPreviewModal';
 import { api, useFetch } from '@/lib/nch/client';
 import { useAuth } from '@/context/AuthContext';
-import type { Complaint, AiAssist } from '@/lib/nch/types';
+import type { Complaint, AiAssist, Document } from '@/lib/nch/types';
 
 type TabId = 'overview' | 'timeline' | 'documents' | 'response' | 'remarks';
 
@@ -35,6 +37,12 @@ export default function OfficerComplaintDetail() {
   const [aiBusy, setAiBusy] = useState(false);
   const [aiResult, setAiResult] = useState<AiAssist | null>(null);
   const [aiError, setAiError] = useState('');
+
+  // Document state
+  const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [docError, setDocError] = useState('');
+  const docInputRef = useRef<HTMLInputElement>(null);
 
   if (loading) return <AppLayout><LoadingBlock /></AppLayout>;
   if (error || !complaint) {
@@ -118,6 +126,29 @@ export default function OfficerComplaintDetail() {
       setAiError((err as Error).message);
     } finally {
       setAiBusy(false);
+    }
+  };
+
+  const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingDoc(true);
+    setDocError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`/api/complaints/${complaint.id}/documents`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to upload document');
+      await refetch();
+      if (docInputRef.current) docInputRef.current.value = '';
+    } catch (err) {
+      setDocError((err as Error).message);
+    } finally {
+      setUploadingDoc(false);
     }
   };
 
@@ -290,19 +321,83 @@ export default function OfficerComplaintDetail() {
               {activeTab === 'timeline' && <CaseTimeline events={complaint.timeline} />}
 
               {activeTab === 'documents' && (
-                <div className="space-y-2">
-                  {complaint.documents.length === 0 ? (
-                    <p className="text-sm text-slate-400 text-center py-8">No documents submitted.</p>
-                  ) : (
-                    complaint.documents.map(doc => (
-                      <div key={doc.id} className="flex items-center gap-3 px-4 py-3 border border-slate-200 rounded">
-                        <FileText size={16} className="text-slate-400 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-800 truncate">{doc.name}</p>
-                          <p className="text-xs text-slate-400">{doc.type} · {doc.size} · Uploaded by {doc.uploadedBy} on {doc.uploadedAt}</p>
-                        </div>
+                <div className="space-y-4">
+                  {/* Officer Upload Section */}
+                  <div className="bg-slate-50 border border-dashed border-slate-300 rounded-lg p-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-800">Attach Scrutiny Record / Official Notice</p>
+                        <p className="text-2xs text-slate-500 mt-0.5">Attach assessment files, notices, or official records (PDF, PNG, JPG, DOC up to 15MB)</p>
                       </div>
-                    ))
+                      <div>
+                        <input
+                          type="file"
+                          ref={docInputRef}
+                          onChange={handleDocUpload}
+                          className="hidden"
+                          accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
+                        />
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          icon={<UploadCloud size={14} />}
+                          loading={uploadingDoc}
+                          onClick={() => docInputRef.current?.click()}
+                        >
+                          Attach Document
+                        </Button>
+                      </div>
+                    </div>
+                    {docError && (
+                      <p className="text-xs text-red-600 mt-2 bg-red-50 border border-red-200 rounded p-2">{docError}</p>
+                    )}
+                  </div>
+
+                  {complaint.documents.length === 0 ? (
+                    <div className="text-center py-8 bg-white border border-slate-200 rounded-lg">
+                      <FileText size={32} className="mx-auto text-slate-300 mb-2" />
+                      <p className="text-sm font-medium text-slate-600">No documents attached</p>
+                      <p className="text-xs text-slate-400 mt-0.5">No consumer evidence or officer attachments on this case.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-2.5">
+                      {complaint.documents.map(doc => {
+                        const isImg = ['PNG', 'JPG', 'JPEG', 'WEBP', 'IMAGE'].includes(doc.type.toUpperCase());
+                        return (
+                          <div key={doc.id} className="flex items-center justify-between gap-3 px-4 py-3 bg-white border border-slate-200 rounded-lg hover:border-slate-300 transition-colors shadow-2xs">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className={`p-2 rounded-lg shrink-0 ${isImg ? 'bg-sky-50 text-sky-600' : 'bg-rose-50 text-rose-600'}`}>
+                                <FileText size={18} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-slate-800 truncate">{doc.name}</p>
+                                <p className="text-2xs text-slate-400 mt-0.5">
+                                  <span className="font-medium text-slate-600">{doc.type}</span> · {doc.size} · Uploaded by <strong className="text-slate-600">{doc.uploadedBy}</strong> · {doc.uploadedAt}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setPreviewDoc(doc)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-md hover:bg-slate-100 hover:text-nch-blue-700 transition-colors cursor-pointer"
+                              >
+                                <Eye size={13} />
+                                <span>Preview</span>
+                              </button>
+                              <a
+                                href={`/api/documents/${doc.id}?download=1`}
+                                download={doc.name}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-nch-blue-700 bg-nch-blue-50 border border-nch-blue-200 rounded-md hover:bg-nch-blue-100 transition-colors cursor-pointer"
+                              >
+                                <Download size={13} />
+                                <span>Download</span>
+                              </a>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               )}
@@ -606,6 +701,14 @@ export default function OfficerComplaintDetail() {
           )}
         </div>
       </Modal>
+
+      {/* Document Preview Modal */}
+      <DocumentPreviewModal
+        document={previewDoc}
+        docketNumber={complaint.docketNumber}
+        open={Boolean(previewDoc)}
+        onClose={() => setPreviewDoc(null)}
+      />
     </AppLayout>
   );
 }

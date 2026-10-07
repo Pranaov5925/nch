@@ -2,17 +2,18 @@
 
 // NCH 3.0 — Complaint Detail (Consumer View) (ported; live API + real confirm/dispute)
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Download, CheckCircle2, XCircle,
   AlertTriangle, FileText, Clock, Calendar, Building2,
-  Star, Info
+  Star, Info, Eye, UploadCloud, Plus
 } from 'lucide-react';
 import { AppLayout, LoadingBlock, ErrorBlock } from '@/components/nch/AppLayout';
 import { StatusBadge, PriorityBadge, CaseTimeline, Button, AlertBanner, Modal } from '@/components/nch/ui';
+import { DocumentPreviewModal } from '@/components/nch/DocumentPreviewModal';
 import { api, useFetch } from '@/lib/nch/client';
-import type { Complaint } from '@/lib/nch/types';
+import type { Complaint, Document } from '@/lib/nch/types';
 
 type TabId = 'overview' | 'timeline' | 'documents' | 'response';
 
@@ -31,6 +32,12 @@ export default function ComplaintDetail() {
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
   const [confirmDone, setConfirmDone] = useState(false);
+
+  // Document state
+  const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (loading) return <AppLayout><LoadingBlock /></AppLayout>;
   if (error || !complaint) {
@@ -86,6 +93,29 @@ export default function ComplaintDetail() {
       setActionError((err as Error).message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`/api/complaints/${complaint.id}/documents`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to upload document');
+      await refetch();
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err) {
+      setUploadError((err as Error).message);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -260,23 +290,82 @@ export default function ComplaintDetail() {
 
               {activeTab === 'documents' && (
                 <div className="space-y-4">
+                  {/* Upload card */}
+                  <div className="bg-slate-50 border border-dashed border-slate-300 rounded-lg p-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-800">Attach Supporting Evidence</p>
+                        <p className="text-2xs text-slate-500 mt-0.5">Upload receipts, invoices, or screenshots (PDF, PNG, JPG, DOC up to 15MB)</p>
+                      </div>
+                      <div>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileUpload}
+                          className="hidden"
+                          accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
+                        />
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          icon={<UploadCloud size={14} />}
+                          loading={uploading}
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          Upload Document
+                        </Button>
+                      </div>
+                    </div>
+                    {uploadError && (
+                      <p className="text-xs text-red-600 mt-2 bg-red-50 border border-red-200 rounded p-2">{uploadError}</p>
+                    )}
+                  </div>
+
                   {complaint.documents.length === 0 ? (
-                    <p className="text-sm text-slate-500 py-8 text-center">No documents attached. (Document upload is out of scope for this prototype.)</p>
+                    <div className="text-center py-8 bg-white border border-slate-200 rounded-lg">
+                      <FileText size={32} className="mx-auto text-slate-300 mb-2" />
+                      <p className="text-sm font-medium text-slate-600">No documents attached yet</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Attach your receipts or warranty cards using the button above.</p>
+                    </div>
                   ) : (
-                    <ul className="space-y-2">
-                      {complaint.documents.map(doc => (
-                        <li key={doc.id} className="flex items-center gap-3 px-4 py-3 border border-slate-200 rounded hover:bg-slate-50 transition-colors">
-                          <FileText size={16} className="text-slate-400 shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-800 truncate">{doc.name}</p>
-                            <p className="text-xs text-slate-400">{doc.type} · {doc.size} · Uploaded {doc.uploadedAt}</p>
+                    <div className="grid grid-cols-1 gap-2.5">
+                      {complaint.documents.map(doc => {
+                        const isImg = ['PNG', 'JPG', 'JPEG', 'WEBP', 'IMAGE'].includes(doc.type.toUpperCase());
+                        return (
+                          <div key={doc.id} className="flex items-center justify-between gap-3 px-4 py-3 bg-white border border-slate-200 rounded-lg hover:border-slate-300 transition-colors shadow-2xs">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className={`p-2 rounded-lg shrink-0 ${isImg ? 'bg-sky-50 text-sky-600' : 'bg-rose-50 text-rose-600'}`}>
+                                <FileText size={18} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-slate-800 truncate">{doc.name}</p>
+                                <p className="text-2xs text-slate-400 mt-0.5">
+                                  <span className="font-medium text-slate-600">{doc.type}</span> · {doc.size} · Uploaded by {doc.uploadedBy} · {doc.uploadedAt}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setPreviewDoc(doc)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-md hover:bg-slate-100 hover:text-nch-blue-700 transition-colors cursor-pointer"
+                              >
+                                <Eye size={13} />
+                                <span>Preview</span>
+                              </button>
+                              <a
+                                href={`/api/documents/${doc.id}?download=1`}
+                                download={doc.name}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-nch-blue-700 bg-nch-blue-50 border border-nch-blue-200 rounded-md hover:bg-nch-blue-100 transition-colors cursor-pointer"
+                              >
+                                <Download size={13} />
+                                <span>Download</span>
+                              </a>
+                            </div>
                           </div>
-                          <button className="text-slate-300 cursor-not-allowed p-1" title="Download unavailable in prototype" aria-label={`Download ${doc.name} (unavailable)`} disabled>
-                            <Download size={15} />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               )}
@@ -517,6 +606,14 @@ export default function ComplaintDetail() {
           </div>
         </div>
       </Modal>
+
+      {/* Document Preview Modal */}
+      <DocumentPreviewModal
+        document={previewDoc}
+        docketNumber={complaint.docketNumber}
+        open={Boolean(previewDoc)}
+        onClose={() => setPreviewDoc(null)}
+      />
     </AppLayout>
   );
 }

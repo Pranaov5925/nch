@@ -24,7 +24,6 @@ const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: 'Dashboard',          to: '/consumer/dashboard',     icon: <LayoutDashboard size={16} /> },
     { label: 'My Complaints',      to: '/consumer/complaints',    icon: <FileText size={16} /> },
     { label: 'Register Complaint', to: '/consumer/register',      icon: <FilePlus size={16} /> },
-    { label: 'Track Complaint',    to: '/consumer/track',         icon: <Search size={16} /> },
     { label: 'Documents',          to: '/consumer/documents',     icon: <Upload size={16} /> },
     { label: 'Notifications',      to: '/consumer/notifications', icon: <Bell size={16} /> },
     { label: 'My Profile',         to: '/consumer/profile',       icon: <User size={16} /> },

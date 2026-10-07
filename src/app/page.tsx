@@ -78,7 +78,7 @@ function AppRoutes() {
       <Route path="/consumer/complaints/:id" element={<ProtectedRoute roles={['consumer']}><ComplaintDetail /></ProtectedRoute>} />
       <Route path="/consumer/register" element={<ProtectedRoute roles={['consumer']}><RegisterGrievance /></ProtectedRoute>} />
       <Route path="/consumer/register/confirmation" element={<ProtectedRoute roles={['consumer']}><SubmissionConfirmation /></ProtectedRoute>} />
-      <Route path="/consumer/track" element={<ProtectedRoute roles={['consumer']}><PublicTrackPage /></ProtectedRoute>} />
+      <Route path="/consumer/track" element={<Navigate to="/consumer/complaints" replace />} />
       <Route path="/consumer/documents" element={<ProtectedRoute roles={['consumer']}><DocumentsPage /></ProtectedRoute>} />
       <Route path="/consumer/notifications" element={<ProtectedRoute roles={['consumer']}><NotificationsPage /></ProtectedRoute>} />
       {/* Notifications are a per-user API — the same page serves every role. */}

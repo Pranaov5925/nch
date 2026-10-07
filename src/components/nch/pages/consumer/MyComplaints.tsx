@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { Search, FilePlus, Filter, X } from 'lucide-react';
 import { AppLayout, PageHeader, LoadingBlock, ErrorBlock } from '@/components/nch/AppLayout';
 import { StatusBadge, PriorityBadge, Button, Input, Select, EmptyState } from '@/components/nch/ui';
+import { TrackStatusModal } from '@/components/nch/TrackStatusModal';
 import { useFetch } from '@/lib/nch/client';
 import type { Complaint, ComplaintStatus } from '@/lib/nch/types';
 
@@ -24,6 +25,7 @@ export default function MyComplaints() {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [sectorFilter, setSectorFilter] = useState<string>('');
+  const [selectedComplaintForTrack, setSelectedComplaintForTrack] = useState<Complaint | null>(null);
 
   const sectors = useMemo(() => Array.from(new Set(complaints.map(c => c.sector))), [complaints]);
 
@@ -55,7 +57,7 @@ export default function MyComplaints() {
       />
 
       {/* Filters */}
-      <div className="bg-white border border-slate-200 rounded mb-4 p-3">
+      <div className="bg-white border border-slate-200 rounded-xl shadow-xs mb-6 p-4">
         <div className="flex flex-wrap gap-3 items-center">
           <div className="flex-1 min-w-48">
             <Input
@@ -101,11 +103,11 @@ export default function MyComplaints() {
 
       {/* List */}
       {loading ? (
-        <div className="bg-white border border-slate-200 rounded"><LoadingBlock /></div>
+        <div className="bg-white border border-slate-200/90 rounded-xl shadow-xs"><LoadingBlock /></div>
       ) : error ? (
-        <div className="bg-white border border-slate-200 rounded"><ErrorBlock message={error} onRetry={refetch} /></div>
+        <div className="bg-white border border-slate-200/90 rounded-xl shadow-xs"><ErrorBlock message={error} onRetry={refetch} /></div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded">
+        <div className="bg-white border border-slate-200/90 rounded-xl shadow-xs">
           <EmptyState
             icon={<Filter size={32} />}
             title="No complaints match your filters"
@@ -114,20 +116,32 @@ export default function MyComplaints() {
           />
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded divide-y divide-slate-100">
+        <div className="bg-white border border-slate-200/90 rounded-xl shadow-xs divide-y divide-slate-100 overflow-hidden">
           {filtered.map(c => (
             <Link
               key={c.id}
               to={`/consumer/complaints/${c.id}`}
-              className="block hover:bg-slate-50 transition-colors"
+              className="block hover:bg-slate-50/80 transition-colors"
             >
-              <div className="px-4 py-4">
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900 line-clamp-2">{c.subject}</p>
-                    <p className="text-xs font-mono text-slate-400 mt-0.5">{c.docketNumber}</p>
+              <div className="px-5 py-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2">{c.subject}</p>
+                    <p className="text-xs font-mono text-slate-400 mt-1">{c.docketNumber}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSelectedComplaintForTrack(c);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-nch-blue-700 bg-nch-blue-50 border border-nch-blue-200 hover:bg-nch-blue-100 hover:border-nch-blue-300 transition-colors shadow-2xs cursor-pointer"
+                    >
+                      <Search size={13} />
+                      <span>Track Status</span>
+                    </button>
                     <PriorityBadge priority={c.priority} size="sm" />
                     <StatusBadge status={c.status} size="sm" />
                   </div>
@@ -147,26 +161,35 @@ export default function MyComplaints() {
                 </div>
 
                 {/* Pending actions */}
-                {['Response Received', 'Confirmation Pending'].includes(c.status) && (
-                  <div className="mt-2 inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
-                    Action required: Review company response
-                  </div>
-                )}
-                {c.status === 'Reopened' && (
-                  <div className="mt-2 inline-flex items-center gap-1 text-xs text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded">
-                    Dispute under review by NCH
-                  </div>
-                )}
-                {c.sla?.breached && !['Resolved', 'Closed'].includes(c.status) && (
-                  <div className="mt-2 ml-1 inline-flex items-center gap-1 text-xs text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded">
-                    SLA deadline exceeded by {c.sla.overdueHours}h — flagged for escalation review
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-2 mt-2.5">
+                  {['Response Received', 'Confirmation Pending'].includes(c.status) && (
+                    <div className="inline-flex items-center gap-1 text-xs font-medium text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md">
+                      Action required: Review company response
+                    </div>
+                  )}
+                  {c.status === 'Reopened' && (
+                    <div className="inline-flex items-center gap-1 text-xs font-medium text-purple-800 bg-purple-50 border border-purple-200 px-2.5 py-0.5 rounded-md">
+                      Dispute under review by NCH
+                    </div>
+                  )}
+                  {c.sla?.breached && !['Resolved', 'Closed'].includes(c.status) && (
+                    <div className="inline-flex items-center gap-1 text-xs font-medium text-red-800 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-md">
+                      SLA deadline exceeded by {c.sla.overdueHours}h — flagged for escalation review
+                    </div>
+                  )}
+                </div>
               </div>
             </Link>
           ))}
         </div>
       )}
+
+      {/* Tracking Modal */}
+      <TrackStatusModal
+        complaint={selectedComplaintForTrack}
+        open={Boolean(selectedComplaintForTrack)}
+        onClose={() => setSelectedComplaintForTrack(null)}
+      />
     </AppLayout>
   );
 }

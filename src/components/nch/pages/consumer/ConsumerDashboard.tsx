@@ -2,10 +2,12 @@
 
 // NCH 3.0 — Consumer Dashboard (ported; live data)
 
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FilePlus, FileText, Search, Bell, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { AppLayout, PageHeader, SectionCard, StatCard, LoadingBlock, ErrorBlock } from '@/components/nch/AppLayout';
 import { StatusBadge, Button } from '@/components/nch/ui';
+import { TrackStatusModal } from '@/components/nch/TrackStatusModal';
 import { useAuth } from '@/context/AuthContext';
 import { useFetch } from '@/lib/nch/client';
 import type { Complaint, Notification } from '@/lib/nch/types';
@@ -14,6 +16,7 @@ export default function ConsumerDashboard() {
   const { user } = useAuth();
   const { data, loading, error, refetch } = useFetch<{ complaints: Complaint[] }>('/api/complaints');
   const { data: notifData } = useFetch<{ notifications: Notification[] }>(user ? '/api/notifications' : null);
+  const [selectedComplaintForTrack, setSelectedComplaintForTrack] = useState<Complaint | null>(null);
 
   if (loading) return <AppLayout><LoadingBlock /></AppLayout>;
   if (error) return <AppLayout><ErrorBlock message={error} onRetry={refetch} /></AppLayout>;
@@ -113,9 +116,23 @@ export default function ConsumerDashboard() {
                       className="flex items-start gap-4 px-5 py-4 hover:bg-slate-50/80 transition-colors"
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-3 mb-1.5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-1.5">
                           <p className="text-sm font-semibold text-slate-800 line-clamp-1">{c.subject}</p>
-                          <StatusBadge status={c.status} size="sm" />
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSelectedComplaintForTrack(c);
+                              }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md text-nch-blue-700 bg-nch-blue-50 border border-nch-blue-200 hover:bg-nch-blue-100 hover:border-nch-blue-300 transition-colors shadow-2xs cursor-pointer"
+                            >
+                              <Search size={12} />
+                              <span>Track</span>
+                            </button>
+                            <StatusBadge status={c.status} size="sm" />
+                          </div>
                         </div>
                         <div className="flex items-center gap-2.5 text-xs text-slate-400">
                           <span className="font-mono">{c.docketNumber}</span>
@@ -139,7 +156,7 @@ export default function ConsumerDashboard() {
             <div className="space-y-2.5">
               {[
                 { label: 'Register a New Complaint', to: '/consumer/register', icon: <FilePlus size={16} /> },
-                { label: 'Track Complaint Status', to: '/consumer/track', icon: <Search size={16} /> },
+                { label: 'Track Complaint Status', to: '/consumer/complaints', icon: <Search size={16} /> },
                 { label: 'View Documents', to: '/consumer/documents', icon: <FileText size={16} /> },
                 { label: 'View Notifications', to: '/consumer/notifications', icon: <Bell size={16} /> },
               ].map(action => (
@@ -180,6 +197,13 @@ export default function ConsumerDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Tracking Modal */}
+      <TrackStatusModal
+        complaint={selectedComplaintForTrack}
+        open={Boolean(selectedComplaintForTrack)}
+        onClose={() => setSelectedComplaintForTrack(null)}
+      />
     </AppLayout>
   );
 }

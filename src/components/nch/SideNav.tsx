@@ -80,42 +80,42 @@ export function SideNav() {
   return (
     <nav
       className={clsx(
-        'flex flex-col h-full bg-nch-blue-800 text-white transition-all duration-200 shrink-0',
-        collapsed ? 'w-14' : 'w-56'
+        'flex flex-col h-full bg-nch-blue-800 text-white transition-all duration-200 shrink-0 z-20',
+        collapsed ? 'w-16' : 'w-64'
       )}
       aria-label="Main navigation"
     >
       {/* Header */}
       <div className={clsx(
-        'flex items-center border-b border-nch-blue-700 py-3',
-        collapsed ? 'justify-center px-2' : 'justify-between px-4'
+        'h-16 flex items-center border-b border-nch-blue-700/80 shrink-0 transition-all',
+        collapsed ? 'justify-center px-2' : 'justify-between px-5'
       )}>
         {!collapsed && (
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-nch-blue-200 uppercase tracking-wide truncate">NCH Prototype</p>
-            <p className="text-xs text-nch-blue-300 truncate">{ROLE_LABELS[role]}</p>
+          <div className="min-w-0 pr-2">
+            <p className="text-xs font-bold text-nch-blue-200 uppercase tracking-wider truncate">NCH Prototype</p>
+            <p className="text-xs text-nch-blue-300 font-medium truncate mt-0.5">{ROLE_LABELS[role]}</p>
           </div>
         )}
         <button
           onClick={() => setCollapsed(c => !c)}
-          className="p-1 rounded hover:bg-nch-blue-700 text-nch-blue-300 hover:text-white shrink-0"
+          className="p-1.5 rounded-lg hover:bg-nch-blue-700 text-nch-blue-300 hover:text-white transition-colors shrink-0 cursor-pointer"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
       </div>
 
       {/* Nav items */}
-      <div className="flex-1 overflow-y-auto py-2">
-        <ul role="list" className="space-y-0.5 px-2">
+      <div className="flex-1 overflow-y-auto py-3">
+        <ul role="list" className={clsx('space-y-1', collapsed ? 'px-2' : 'px-3')}>
           {items.map(item => (
             <li key={item.to}>
               <NavLink
                 to={item.to}
                 className={({ isActive }) => clsx(
-                  'flex items-center rounded text-sm transition-colors group',
-                  collapsed ? 'justify-center px-1 py-2' : 'gap-2.5 px-2.5 py-2',
-                  isActive ? 'bg-nch-blue-600 text-white' : 'text-nch-blue-200 hover:bg-nch-blue-700 hover:text-white'
+                  'flex items-center rounded-lg text-sm font-medium transition-all duration-150 group',
+                  collapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3.5 py-2.5',
+                  isActive ? 'bg-nch-blue-600 text-white shadow-xs' : 'text-nch-blue-200 hover:bg-nch-blue-700/70 hover:text-white'
                 )}
                 title={collapsed ? item.label : undefined}
               >
@@ -128,18 +128,18 @@ export function SideNav() {
       </div>
 
       {/* User + Logout */}
-      <div className="border-t border-nch-blue-700 p-2 space-y-1">
+      <div className="border-t border-nch-blue-700/80 p-3 space-y-2 shrink-0">
         {!collapsed && (
-          <div className="px-2 py-1.5">
-            <p className="text-xs font-medium text-white truncate">{user.name}</p>
-            <p className="text-xs text-nch-blue-300 truncate">{user.email}</p>
+          <div className="px-3 py-2 rounded-lg bg-nch-blue-900/40 border border-nch-blue-700/40">
+            <p className="text-xs font-semibold text-white truncate">{user.name}</p>
+            <p className="text-[11px] text-nch-blue-300 truncate mt-0.5">{user.email}</p>
           </div>
         )}
         <button
           onClick={handleLogout}
           className={clsx(
-            'flex items-center rounded text-sm text-nch-blue-300 hover:bg-nch-blue-700 hover:text-white transition-colors w-full',
-            collapsed ? 'justify-center px-1 py-2' : 'gap-2.5 px-2.5 py-2'
+            'flex items-center rounded-lg text-sm font-medium text-nch-blue-300 hover:bg-nch-blue-700 hover:text-white transition-colors w-full cursor-pointer',
+            collapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3.5 py-2.5'
           )}
           title={collapsed ? 'Sign Out' : undefined}
         >

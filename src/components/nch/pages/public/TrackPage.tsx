@@ -59,34 +59,36 @@ export default function PublicTrackPage() {
 
   return (
     <div className="nch-root min-h-screen bg-slate-50 flex flex-col">
-      <div className="bg-slate-900 text-slate-400 text-xs py-1.5 px-4 flex items-center gap-2">
-        <ShieldCheck size={11} /> Government of India — Department of Consumer Affairs
+      <div className="bg-slate-900 text-slate-400 text-xs py-2 px-6 sm:px-8 flex items-center gap-2">
+        <ShieldCheck size={13} /> Government of India — Department of Consumer Affairs
       </div>
-      <header className="bg-nch-blue-700 text-white px-4 py-3">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
-              <ShieldCheck size={16} />
+      <header className="bg-nch-blue-700 text-white px-6 sm:px-8 py-4 shadow-xs">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-3.5">
+            <div className="h-9 w-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
+              <ShieldCheck size={18} />
             </div>
             <div>
-              <p className="text-xs font-bold">National Consumer Helpline</p>
-              <p className="text-xs text-nch-blue-300">Track Complaint — Public</p>
+              <p className="text-sm font-bold leading-tight">National Consumer Helpline</p>
+              <p className="text-xs text-nch-blue-200">Track Complaint — Public</p>
             </div>
           </Link>
-          <Link to="/login/consumer" className="text-xs text-nch-blue-200 hover:text-white">Consumer Login →</Link>
+          <Link to="/login/consumer" className="text-xs font-semibold text-nch-blue-100 hover:text-white transition-colors">Consumer Login →</Link>
         </div>
       </header>
 
-      <main className="flex-1 py-8 px-4">
-        <div className="max-w-3xl mx-auto">
+      <main className="flex-1 py-10 px-6 sm:px-8">
+        <div className="max-w-4xl mx-auto">
 
           {/* Search */}
-          <div className="bg-white border border-slate-200 rounded p-5 mb-6">
-            <h1 className="text-base font-semibold text-slate-800 mb-1">Track Your Complaint</h1>
-            <p className="text-xs text-slate-500 mb-4">Enter your docket number together with the email or mobile number registered on the complaint. Login is not required.</p>
-            <form onSubmit={handleSubmit} className="space-y-2">
-              <div>
-                <label htmlFor="track-docket" className="text-xs font-medium text-slate-600 mb-1 block">Docket number</label>
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-7 shadow-xs mb-8 space-y-5">
+            <div>
+              <h1 className="text-lg font-bold text-slate-900 mb-1">Track Your Complaint</h1>
+              <p className="text-xs text-slate-500 leading-relaxed">Enter your docket number together with the email or mobile number registered on the complaint. Login is not required.</p>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label htmlFor="track-docket" className="text-xs font-semibold text-slate-700 block">Docket number</label>
                 <Input
                   id="track-docket"
                   value={docket}
@@ -96,8 +98,8 @@ export default function PublicTrackPage() {
                   aria-label="Docket number"
                 />
               </div>
-              <div>
-                <label htmlFor="track-contact" className="text-xs font-medium text-slate-600 mb-1 block">Registered email or mobile number</label>
+              <div className="space-y-1.5">
+                <label htmlFor="track-contact" className="text-xs font-semibold text-slate-700 block">Registered email or mobile number</label>
                 <Input
                   id="track-contact"
                   value={contact}
@@ -106,88 +108,90 @@ export default function PublicTrackPage() {
                   aria-label="Registered email or mobile number"
                 />
               </div>
-              <Button type="submit" variant="primary" icon={<Search size={15} />} loading={searching} className="w-full sm:w-auto">
-                Track
-              </Button>
+              <div className="pt-1">
+                <Button type="submit" variant="primary" icon={<Search size={16} />} loading={searching} className="w-full sm:w-auto font-semibold">
+                  Track Complaint
+                </Button>
+              </div>
             </form>
             {error && (
-              <div className="mt-3 flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
-                <AlertCircle size={13} className="shrink-0 mt-0.5" />
-                {error}
+              <div className="flex items-start gap-2.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3 shadow-2xs">
+                <AlertCircle size={15} className="shrink-0 mt-0.5" />
+                <span>{error}</span>
               </div>
             )}
-            <p className="text-xs text-slate-400 mt-3">
+            <p className="text-xs text-slate-400 pt-2 border-t border-slate-100">
               For full complaint details and to take action,{' '}
-              <Link to="/login/consumer" className="text-nch-blue-600 hover:underline">log in to your consumer account</Link>.
+              <Link to="/login/consumer" className="text-nch-blue-600 font-semibold hover:underline">log in to your consumer account</Link>.
             </p>
           </div>
 
           {/* Results */}
           {searched && complaint && (
-            <div className="space-y-4">
-              <div className="bg-white border border-slate-200 rounded p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <div className="space-y-6">
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-7 shadow-xs">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-5 pb-4 border-b border-slate-100">
                   <div>
-                    <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">Docket Number</p>
-                    <p className="text-sm font-mono font-semibold text-slate-900">{complaint.docketNumber}</p>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Docket Number</p>
+                    <p className="text-base font-mono font-bold text-slate-900">{complaint.docketNumber}</p>
                   </div>
-                  <StatusBadge status={complaint.status} />
+                  <StatusBadge status={complaint.status} size="md" />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
-                  <div>
-                    <p className="text-xs text-slate-400 mb-0.5">Subject</p>
-                    <p className="text-sm text-slate-700 font-medium line-clamp-2">{complaint.subject}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-sm">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-slate-400">Subject</p>
+                    <p className="text-slate-800 font-medium leading-snug line-clamp-2">{complaint.subject}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-slate-400 mb-0.5">Organisation / Company</p>
-                    <p className="text-sm text-slate-700">{complaint.companyName}</p>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-slate-400">Organisation / Company</p>
+                    <p className="text-slate-800 font-medium">{complaint.companyName}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-slate-400 mb-0.5">Sector</p>
-                    <p className="text-sm text-slate-700">{complaint.sector}</p>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-slate-400">Sector</p>
+                    <p className="text-slate-700">{complaint.sector}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-slate-400 mb-0.5">Date Registered</p>
-                    <p className="text-sm text-slate-700">{fmt(complaint.registeredAt)}</p>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-slate-400">Date Registered</p>
+                    <p className="text-slate-700">{fmt(complaint.registeredAt)}</p>
                   </div>
                   {complaint.expectedResolutionDate && (
-                    <div>
-                      <p className="text-xs text-slate-400 mb-0.5">Response Due (NCH SLA)</p>
-                      <p className="text-sm text-slate-700">{complaint.expectedResolutionDate}</p>
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold text-slate-400">Response Due (NCH SLA)</p>
+                      <p className="text-slate-700 font-medium">{complaint.expectedResolutionDate}</p>
                     </div>
                   )}
                   {complaint.companyExpectedResolutionDate && (
-                    <div>
-                      <p className="text-xs text-slate-400 mb-0.5">Company's Expected Completion</p>
-                      <p className="text-sm text-slate-700">{complaint.companyExpectedResolutionDate}</p>
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold text-slate-400">Company's Expected Completion</p>
+                      <p className="text-slate-700">{complaint.companyExpectedResolutionDate}</p>
                     </div>
                   )}
-                  <div>
-                    <p className="text-xs text-slate-400 mb-0.5">Filed By</p>
-                    <p className="text-sm text-slate-700">{complaint.consumerFirstName} (name partially withheld)</p>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-slate-400">Filed By</p>
+                    <p className="text-slate-700">{complaint.consumerFirstName} (name partially withheld)</p>
                   </div>
                 </div>
               </div>
 
               {/* Timeline */}
-              <div className="bg-white border border-slate-200 rounded p-5">
-                <h2 className="text-sm font-semibold text-slate-800 mb-4">Complaint Timeline</h2>
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-7 shadow-xs">
+                <h2 className="text-base font-bold text-slate-900 mb-6">Complaint Timeline</h2>
                 <CaseTimeline events={complaint.timeline} />
               </div>
 
-              <div className="bg-nch-blue-50 border border-nch-blue-200 rounded p-4 text-xs text-nch-blue-800">
+              <div className="bg-nch-blue-50 border border-nch-blue-200 rounded-xl p-4.5 text-xs text-nch-blue-900 leading-relaxed shadow-2xs">
                 To view the organisation's full response, documents and to confirm or dispute a resolution, please{' '}
-                <Link to="/login/consumer" className="font-semibold underline">log in to your consumer account</Link>.
+                <Link to="/login/consumer" className="font-semibold underline text-nch-blue-700 hover:text-nch-blue-900">log in to your consumer account</Link>.
               </div>
             </div>
           )}
 
           {!searched && (
-            <div className="text-center py-16 text-slate-400">
-              <Search size={36} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm">Enter your docket number and registered contact detail above to track your complaint.</p>
-              <p className="text-xs mt-1">Docket number format: NCH/YYYY/ST/XXXXXX</p>
+            <div className="text-center py-20 text-slate-400 space-y-2">
+              <Search size={40} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm font-medium text-slate-600">Enter your docket number and registered contact detail above to track your complaint.</p>
+              <p className="text-xs text-slate-400">Docket number format: NCH/YYYY/ST/XXXXXX</p>
             </div>
           )}
         </div>

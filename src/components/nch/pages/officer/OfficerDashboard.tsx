@@ -43,36 +43,36 @@ export default function OfficerDashboard() {
 
       {/* Alert for escalated cases */}
       {escalated.length > 0 && (
-        <div className="mb-5 flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded">
-          <AlertTriangle size={15} className="text-red-600 shrink-0 mt-0.5" />
+        <div className="mb-6 flex items-start gap-3.5 px-4.5 py-3.5 bg-red-50 border border-red-200 rounded-xl shadow-xs">
+          <AlertTriangle size={16} className="text-red-600 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-red-800">
+            <p className="text-sm font-semibold text-red-900">
               {escalated.length} escalated/reopened case{escalated.length > 1 ? 's' : ''} require immediate attention
             </p>
-            <p className="text-xs text-red-600 mt-0.5">Please review escalated cases and take appropriate action.</p>
+            <p className="text-xs text-red-700 mt-0.5 leading-relaxed">Please review escalated cases and take appropriate action.</p>
           </div>
-          <Link to="/officer/escalations" className="shrink-0 text-xs font-medium text-red-700 underline">
+          <Link to="/officer/escalations" className="shrink-0 text-xs font-semibold text-red-700 hover:text-red-900 underline self-center">
             Review →
           </Link>
         </div>
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5 mb-8">
         <StatCard label="Assigned to Me" value={assigned.length} />
         <StatCard label="Pending Cases" value={pending.length} accent />
         <StatCard label="Resolved This Month" value={resolvedThisMonth} sub="This month" />
         <StatCard label="Avg. Resolution" value={`${avgDays || '—'} days`} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Assigned complaints */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-2 space-y-6">
           <SectionCard
             title="My Casebook (assigned + unassigned pool)"
             actions={
-              <Link to="/officer/queue" className="text-xs text-nch-blue-600 hover:text-nch-blue-800 font-medium">
+              <Link to="/officer/queue" className="text-xs text-nch-blue-600 hover:text-nch-blue-800 font-semibold">
                 Full queue →
               </Link>
             }
@@ -81,19 +81,19 @@ export default function OfficerDashboard() {
             <ul className="divide-y divide-slate-100">
               {assignedShow.map(c => (
                 <li key={c.id}>
-                  <Link to={`/officer/complaints/${c.id}`} className="flex items-start gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors">
+                  <Link to={`/officer/complaints/${c.id}`} className="flex items-start gap-4 px-5 py-4 hover:bg-slate-50/80 transition-colors">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="text-sm font-medium text-slate-800 line-clamp-1">{c.subject}</p>
+                      <div className="flex items-center justify-between gap-3 mb-1.5">
+                        <p className="text-sm font-semibold text-slate-800 line-clamp-1">{c.subject}</p>
                         <StatusBadge status={c.status} size="sm" />
                       </div>
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-400">
+                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-400">
                         <span className="font-mono">{c.docketNumber}</span>
                         <span>·</span>
                         <span>{c.consumerName}</span>
                         <span>·</span>
                         <span>{c.companyName}</span>
-                        {!c.assignedOfficerId && <span className="text-nch-blue-500 font-medium">· unassigned</span>}
+                        {!c.assignedOfficerId && <span className="text-nch-blue-600 font-semibold">· unassigned</span>}
                       </div>
                     </div>
                     <PriorityBadge priority={c.priority} size="sm" />
@@ -101,7 +101,7 @@ export default function OfficerDashboard() {
                 </li>
               ))}
               {assignedShow.length === 0 && (
-                <li className="px-4 py-8 text-center text-sm text-slate-400">No complaints in your queue yet.</li>
+                <li className="px-5 py-12 text-center text-sm text-slate-400">No complaints in your queue yet.</li>
               )}
             </ul>
           </SectionCard>
@@ -111,39 +111,39 @@ export default function OfficerDashboard() {
             <ul className="divide-y divide-slate-100">
               {highPriority.map(c => (
                 <li key={c.id}>
-                  <Link to={`/officer/complaints/${c.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
+                  <Link to={`/officer/complaints/${c.id}`} className="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50/80 transition-colors">
                     <PriorityBadge priority={c.priority} size="sm" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-slate-800 truncate">{c.subject}</p>
-                      <p className="text-xs text-slate-400">{c.docketNumber} · {c.consumerName}</p>
+                      <p className="text-xs font-semibold text-slate-800 truncate">{c.subject}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{c.docketNumber} · {c.consumerName}</p>
                     </div>
                     <StatusBadge status={c.status} size="sm" />
                   </Link>
                 </li>
               ))}
               {highPriority.length === 0 && (
-                <li className="px-4 py-6 text-center text-xs text-slate-400">No high-priority active cases.</li>
+                <li className="px-5 py-8 text-center text-xs text-slate-400">No high-priority active cases.</li>
               )}
             </ul>
           </SectionCard>
         </div>
 
         {/* Right sidebar */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Action items */}
           <SectionCard title="Requires Action">
             {needsAction.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-4">No items requiring immediate action.</p>
+              <p className="text-xs text-slate-400 text-center py-6">No items requiring immediate action.</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-2.5">
                 {needsAction.map(c => (
                   <li key={c.id}>
-                    <Link to={`/officer/complaints/${c.id}`} className="block p-3 bg-amber-50 border border-amber-200 rounded hover:bg-amber-100 transition-colors">
-                      <div className="flex items-start justify-between gap-1.5">
-                        <p className="text-xs font-medium text-amber-900 line-clamp-2">{c.subject}</p>
+                    <Link to={`/officer/complaints/${c.id}`} className="block p-3.5 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100/80 transition-colors shadow-2xs">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-semibold text-amber-900 line-clamp-2">{c.subject}</p>
                         <StatusBadge status={c.status} size="sm" />
                       </div>
-                      <p className="text-xs text-amber-600 mt-1">{c.consumerName}</p>
+                      <p className="text-xs text-amber-700 mt-1.5">{c.consumerName}</p>
                     </Link>
                   </li>
                 ))}

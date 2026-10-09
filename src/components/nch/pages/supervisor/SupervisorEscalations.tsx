@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, Bot, Filter, ShieldAlert } from 'lucide-react';
 import { AppLayout, PageHeader, LoadingBlock, ErrorBlock } from '@/components/nch/AppLayout';
 import { StatusBadge, PriorityBadge, Select, Button, Modal, Textarea, AlertBanner } from '@/components/nch/ui';
+import { FormattedMarkdown } from '@/components/nch/FormattedMarkdown';
 import { api, useFetch } from '@/lib/nch/client';
 import type { AiAssist, Complaint } from '@/lib/nch/types';
 
@@ -231,7 +232,9 @@ export default function SupervisorEscalations() {
           {aiResult && (
             <>
               <p className="text-[11px] text-slate-400">Provider: {aiResult.provider}{aiResult.cached ? ' · cached' : ''}</p>
-              <pre className="text-xs text-slate-700 whitespace-pre-wrap font-sans bg-slate-50 border border-slate-200 rounded p-3 max-h-80 overflow-y-auto">{aiResult.text}</pre>
+              <div className="bg-slate-50 border border-slate-200 rounded p-3.5 max-h-80 overflow-y-auto">
+                <FormattedMarkdown content={aiResult.text} />
+              </div>
               <p className="text-[11px] text-slate-400">{aiResult.disclaimer}</p>
             </>
           )}

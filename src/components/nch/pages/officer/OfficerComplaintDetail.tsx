@@ -15,6 +15,7 @@ import {
 import { AppLayout, LoadingBlock, ErrorBlock } from '@/components/nch/AppLayout';
 import { StatusBadge, PriorityBadge, CaseTimeline, Button, AlertBanner, Modal, Textarea } from '@/components/nch/ui';
 import { DocumentPreviewModal } from '@/components/nch/DocumentPreviewModal';
+import { FormattedMarkdown } from '@/components/nch/FormattedMarkdown';
 import { api, useFetch } from '@/lib/nch/client';
 import { useAuth } from '@/context/AuthContext';
 import type { Complaint, AiAssist, Document } from '@/lib/nch/types';
@@ -602,7 +603,9 @@ export default function OfficerComplaintDetail() {
             <div className="px-4 py-4">
               {aiResult?.feature === 'CASE_SUMMARY' ? (
                 <div className="space-y-2">
-                  <pre className="text-xs text-slate-700 whitespace-pre-wrap font-sans bg-slate-50 border border-slate-200 rounded p-3 leading-relaxed">{aiResult.text}</pre>
+                  <div className="bg-slate-50 border border-slate-200 rounded p-3.5 max-h-96 overflow-y-auto">
+                    <FormattedMarkdown content={aiResult.text} />
+                  </div>
                   <p className="text-xs text-slate-400">{aiResult.provider}{aiResult.cached ? ' · cached' : ''}</p>
                   <p className="text-xs text-slate-400 border-t border-slate-100 pt-2">{aiResult.disclaimer}</p>
                   <Button size="sm" variant="ghost" onClick={() => setAiResult(null)}>Clear</Button>
@@ -722,7 +725,9 @@ function AiAssistCard({ assist, onClear }: { assist: AiAssist; onClear: () => vo
         </p>
         <button onClick={onClear} className="text-xs text-slate-400 hover:text-slate-600">Clear</button>
       </div>
-      <pre className="text-xs text-slate-700 whitespace-pre-wrap font-sans leading-relaxed">{assist.text}</pre>
+      <div className="bg-white/80 border border-nch-blue-100 rounded p-3.5 max-h-96 overflow-y-auto">
+        <FormattedMarkdown content={assist.text} />
+      </div>
       <p className="text-xs text-slate-400">{assist.provider}{assist.cached ? ' · cached' : ''}</p>
       <p className="text-xs text-slate-400 border-t border-nch-blue-100 pt-2">{assist.disclaimer}</p>
     </div>

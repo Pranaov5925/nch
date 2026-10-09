@@ -94,7 +94,7 @@ class MistralProvider implements AiProvider {
   name = 'mistral';
   constructor(
     private apiKey: string,
-    private model = process.env.MISTRAL_MODEL || 'mistral-small-latest'
+    private model = process.env.MISTRAL_MODEL || 'open-mistral-7b'
   ) {}
 
   async complete(system: string, user: string): Promise<string> {
@@ -243,7 +243,7 @@ function userPromptFor(input: AiInput): string {
 function pickProvider(): { provider: AiProvider; modelName: string } {
   const mistralKey = process.env.MISTRAL_API_KEY;
   if (mistralKey) {
-    const model = process.env.MISTRAL_MODEL || 'mistral-small-latest';
+    const model = process.env.MISTRAL_MODEL || 'open-mistral-7b';
     return { provider: new MistralProvider(mistralKey, model), modelName: model };
   }
 

@@ -83,10 +83,10 @@ const STATUS_STYLES: Record<string, string> = {
 
 const DEFAULT_STYLE = 'bg-slate-100 text-slate-600 ring-slate-200';
 
-export function StatusBadge({ status, size = 'md' }: { status: ComplaintStatus | string; size?: 'sm' | 'md' }) {
+export function StatusBadge({ status, size = 'md', className }: { status: ComplaintStatus | string; size?: 'sm' | 'md'; className?: string }) {
   const style = STATUS_STYLES[status] ?? DEFAULT_STYLE;
   return (
-    <span className={clsx('inline-flex items-center font-medium rounded-md ring-1 whitespace-nowrap', style, size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs')}>
+    <span className={clsx('inline-flex items-center font-medium rounded-md ring-1 whitespace-nowrap', style, size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs', className)}>
       {status}
     </span>
   );
@@ -99,13 +99,14 @@ const PRIORITY_STYLES: Record<string, string> = {
   'Critical': 'bg-red-100 text-red-800 font-semibold',
 };
 
-export function PriorityBadge({ priority, size = 'md' }: { priority: Priority | string; size?: 'sm' | 'md' }) {
+export function PriorityBadge({ priority, size = 'md', className }: { priority: Priority | string; size?: 'sm' | 'md'; className?: string }) {
   return (
     <span
       className={clsx(
         'inline-flex items-center rounded-md font-medium',
         PRIORITY_STYLES[priority] ?? 'bg-slate-100 text-slate-600',
-        size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs'
+        size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs',
+        className
       )}
     >
       {priority === 'Critical' && <span className="mr-1">▲</span>}

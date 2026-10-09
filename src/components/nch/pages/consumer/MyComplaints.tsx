@@ -129,7 +129,7 @@ export default function MyComplaints() {
                     <p className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2">{c.subject}</p>
                     <p className="text-xs font-mono text-slate-400 mt-1">{c.docketNumber}</p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2.5 shrink-0 self-start">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -137,13 +137,21 @@ export default function MyComplaints() {
                         e.stopPropagation();
                         setSelectedComplaintForTrack(c);
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-nch-blue-700 bg-nch-blue-50 border border-nch-blue-200 hover:bg-nch-blue-100 hover:border-nch-blue-300 transition-colors shadow-2xs cursor-pointer"
+                      className="inline-flex items-center justify-center gap-1.5 w-[110px] py-1.5 text-xs font-semibold rounded-lg text-nch-blue-700 bg-nch-blue-50 border border-nch-blue-200 hover:bg-nch-blue-100 hover:border-nch-blue-300 transition-colors shadow-2xs cursor-pointer shrink-0"
                     >
                       <Search size={13} />
                       <span>Track Status</span>
                     </button>
-                    <PriorityBadge priority={c.priority} size="sm" />
-                    <StatusBadge status={c.status} size="sm" />
+                    <PriorityBadge
+                      priority={c.priority}
+                      size="sm"
+                      className="w-[78px] justify-center text-center shrink-0"
+                    />
+                    <StatusBadge
+                      status={c.status}
+                      size="sm"
+                      className="w-[144px] justify-center text-center shrink-0"
+                    />
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">

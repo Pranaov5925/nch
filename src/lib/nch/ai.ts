@@ -65,7 +65,6 @@ class GeminiProvider implements AiProvider {
   name = 'gemini';
   constructor(
     private apiKey: string,
-    // Model is configurable; defaults to a currently supported Gemini model.
     private model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
   ) {}
 
@@ -87,6 +86,39 @@ class GeminiProvider implements AiProvider {
     const data = await res.json();
     const text = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? '';
     if (!text.trim()) throw new Error('Gemini returned empty text');
+    return text.trim();
+  }
+}
+
+class MistralProvider implements AiProvider {
+  name = 'mistral';
+  constructor(
+    private apiKey: string,
+    private model = process.env.MISTRAL_MODEL || 'mistral-small-latest'
+  ) {}
+
+  async complete(system: string, user: string): Promise<string> {
+    const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.model,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+        temperature: 0.2,
+        max_tokens: 700,
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`Mistral HTTP ${res.status}`);
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content ?? '';
+    if (!text.trim()) throw new Error('Mistral returned empty text');
     return text.trim();
   }
 }
@@ -208,34 +240,37 @@ function userPromptFor(input: AiInput): string {
   });
 }
 
-function pickProvider(): AiProvider {
-  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
-  if (key) {
-    try {
-      return new GeminiProvider(key);
-    } catch {
-      /* fall through to mock */
-    }
+function pickProvider(): { provider: AiProvider; modelName: string } {
+  const mistralKey = process.env.MISTRAL_API_KEY;
+  if (mistralKey) {
+    const model = process.env.MISTRAL_MODEL || 'mistral-small-latest';
+    return { provider: new MistralProvider(mistralKey, model), modelName: model };
   }
-  return new MockProvider();
+
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
+  if (geminiKey) {
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    return { provider: new GeminiProvider(geminiKey, model), modelName: model };
+  }
+
+  return { provider: new MockProvider(), modelName: 'mock' };
 }
 
 // ─── Public API: cache + fallback ────────────────────────────────────────────
 
 export async function generateAiAssist(input: AiInput): Promise<AiAssist> {
   // The provider is resolved BEFORE the cache lookup so the cache key carries
-  // the provider mode ("gemini" vs "mock (placeholder)") and the model name.
-  // Adding/removing GEMINI_API_KEY therefore invalidates all previous entries:
-  // a cached mock result can never shadow a real Gemini call (or vice versa).
-  const provider = pickProvider();
-  const model = process.env.GEMINI_MODEL || 'default';
+  // the provider mode ("mistral", "gemini", vs "mock (placeholder)") and the model name.
+  // Adding/removing API keys therefore invalidates all previous entries:
+  // a cached mock result can never shadow a real LLM call (or vice versa).
+  const { provider, modelName } = pickProvider();
 
   // Cache key = hash of provider + model + the FULL model payload. Any change
   // to the case context (status, timeline, remarks, feedback, response, age…)
   // produces a new key, so a cached summary can never go stale silently.
   const payload = userPromptFor(input);
   const cacheKey = createHash('sha256')
-    .update(`${input.feature}|${provider.name}|${model}|${payload}`)
+    .update(`${input.feature}|${provider.name}|${modelName}|${payload}`)
     .digest('hex');
 
   const hit = await db.aiCache.findUnique({ where: { cacheKey } }).catch(() => null);

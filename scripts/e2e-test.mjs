@@ -16,7 +16,7 @@
 //   npm run db:seed
 // to restore the pristine demo dataset.
 
-const BASE = process.env.E2E_BASE_URL || 'http://localhost:3000';
+const BASE = process.env.E2E_BASE_URL || 'http://localhost:3005';
 const PW = 'demo1234';
 
 let passed = 0;

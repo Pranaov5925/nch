@@ -8,6 +8,7 @@ import { Search, Filter, X } from 'lucide-react';
 import { AppLayout, PageHeader, LoadingBlock, ErrorBlock } from '@/components/nch/AppLayout';
 import { StatusBadge, PriorityBadge, Table, Thead, Tbody, Tr, Th, Td, EmptyState, Input, Select, Button } from '@/components/nch/ui';
 import { useFetch } from '@/lib/nch/client';
+import { useAuth } from '@/context/AuthContext';
 import type { Complaint, ComplaintStatus, Priority } from '@/lib/nch/types';
 
 const ALL_STATUSES: ComplaintStatus[] = [
@@ -20,6 +21,7 @@ const ALL_STATUSES: ComplaintStatus[] = [
 const PRIORITIES: Priority[] = ['Critical', 'High', 'Medium', 'Low'];
 
 export default function OfficerQueue() {
+  const { user } = useAuth();
   const { data, loading, error, refetch } = useFetch<{ complaints: Complaint[] }>('/api/complaints');
   const complaints = data?.complaints ?? [];
   const SECTORS = useMemo(() => Array.from(new Set(complaints.map(c => c.sector))), [complaints]);
@@ -52,11 +54,13 @@ export default function OfficerQueue() {
   const hasFilters = query || statusFilter || priorityFilter || sectorFilter;
   const clearFilters = () => { setQuery(''); setStatusFilter(''); setPriorityFilter(''); setSectorFilter(''); setPage(1); };
 
+  const officerSectors = user?.sectors;
+
   return (
     <AppLayout>
       <PageHeader
         title="Complaint Queue"
-        subtitle={`${filtered.length} complaint${filtered.length !== 1 ? 's' : ''} ${hasFilters ? '(filtered)' : 'total'}`}
+        subtitle={`${filtered.length} complaint${filtered.length !== 1 ? 's' : ''} ${hasFilters ? '(filtered)' : 'total'}${officerSectors && officerSectors.length > 0 ? ` · Specialized Sectors: ${officerSectors.join(', ')}` : ''}`}
       />
 
       {/* Filters */}

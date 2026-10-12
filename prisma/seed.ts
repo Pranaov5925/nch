@@ -69,9 +69,9 @@ async function main() {
     mkUser({ id: 'u003', role: 'consumer', name: 'Anjali Krishnamurthy', email: 'anjali.k@yahoo.com', phone: '7654321098', address: '45, Jayanagar 4th Block, Bengaluru, Karnataka - 560011' }),
     mkUser({ id: 'u004', role: 'consumer', name: 'Murugesan Rajan', email: 'm.rajan1972@gmail.com', phone: '9543218765', address: '7, Anna Nagar West, Chennai, Tamil Nadu - 600040' }),
     mkUser({ id: 'u005', role: 'consumer', name: 'Vikram Singh Rathore', email: 'vikram.rathore@rediffmail.com', phone: '9812345678', address: 'C-14, Vaishali Nagar, Jaipur, Rajasthan - 302021' }),
-    mkUser({ id: 'off001', role: 'officer', name: 'Ramesh Kumar Verma', email: 'r.verma@nch.gov.in', phone: '9810001122', designation: 'Consumer Affairs Officer' }),
-    mkUser({ id: 'off002', role: 'officer', name: 'Kavitha Nair', email: 'k.nair@nch.gov.in', phone: '9810002233', designation: 'Consumer Affairs Officer' }),
-    mkUser({ id: 'off003', role: 'officer', name: 'Deepak Sharma', email: 'd.sharma@nch.gov.in', phone: '9810003344', designation: 'Senior Consumer Affairs Officer' }),
+    mkUser({ id: 'off001', role: 'officer', name: 'Ramesh Kumar Verma', email: 'r.verma@nch.gov.in', phone: '9810001122', designation: 'Consumer Affairs Officer (E-Commerce & Electronics)', sectors: JSON.stringify(['E-Commerce', 'Consumer Electronics']) }),
+    mkUser({ id: 'off002', role: 'officer', name: 'Kavitha Nair', email: 'k.nair@nch.gov.in', phone: '9810002233', designation: 'Consumer Affairs Officer (Banking & Insurance)', sectors: JSON.stringify(['Banking & Finance', 'Insurance']) }),
+    mkUser({ id: 'off003', role: 'officer', name: 'Deepak Sharma', email: 'd.sharma@nch.gov.in', phone: '9810003344', designation: 'Senior Consumer Affairs Officer (Telecom, Aviation, Real Estate)', sectors: JSON.stringify(['Telecom', 'Aviation', 'Real Estate']) }),
     mkUser({ id: 'sup001', role: 'supervisor', name: 'Meena Agarwal', email: 'm.agarwal@nch.gov.in', phone: '9810004455', designation: 'Grievance Supervisor, NCH Grievance Resolution Unit' }),
   ]);
 

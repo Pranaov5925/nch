@@ -28,7 +28,16 @@ export async function GET(req: NextRequest) {
         ? (isCompanyHiddenStatus(status) ? '__none__' : status)
         : { notIn: [...COMPANY_HIDDEN_STATUSES] };
     } else if (user.role === 'officer') {
-      where.OR = [{ assignedOfficerId: user.id }, { assignedOfficerId: null }];
+      // Sector-based routing:
+      // Officer sees:
+      // 1. All complaints directly assigned to them (regardless of sector)
+      // 2. Unassigned complaints matching their specialized sectors (if configured)
+      const officerSectors = user.sectors;
+      const unassignedCondition = (officerSectors && officerSectors.length > 0)
+        ? { assignedOfficerId: null, sector: { in: officerSectors } }
+        : { assignedOfficerId: null };
+
+      where.OR = [{ assignedOfficerId: user.id }, unassignedCondition];
     }
     if (status && user.role !== 'company') where.status = status;
     if (sector) where.sector = sector;
@@ -42,11 +51,14 @@ export async function GET(req: NextRequest) {
         ],
       };
       if (user.role === 'officer') {
-        // SECURITY: the search must NARROW the officer's scope, never replace
-        // it — combine "mine or unassigned" with the search via AND.
+        const officerSectors = user.sectors;
+        const unassignedCondition = (officerSectors && officerSectors.length > 0)
+          ? { assignedOfficerId: null, sector: { in: officerSectors } }
+          : { assignedOfficerId: null };
+
         delete where.OR;
         where.AND = [
-          { OR: [{ assignedOfficerId: user.id }, { assignedOfficerId: null }] },
+          { OR: [{ assignedOfficerId: user.id }, unassignedCondition] },
           search,
         ];
       } else {

@@ -56,20 +56,20 @@ export default function ComplaintDetail() {
     );
   }
 
-  // Confirmation is only meaningful once the organization has CLAIMED a
-  // resolution or the officer has explicitly requested consumer confirmation.
-  const canConfirmResolution = complaint.companyResponse &&
+  // Confirmation is meaningful once the organization has claimed resolution,
+  // the officer has requested confirmation, or the officer has marked the case Resolved.
+  const canConfirmResolution = (complaint.companyResponse || complaint.status === 'Resolved') &&
     !complaint.consumerFeedback?.confirmed &&
     !complaint.consumerFeedback?.disputed &&
-    ['Resolution Claimed', 'Confirmation Pending'].includes(complaint.status);
+    ['Resolution Claimed', 'Confirmation Pending', 'Resolved'].includes(complaint.status);
 
-  // A response that does NOT claim resolution can still be rated or disputed.
-  const canDisputeResponse = complaint.companyResponse &&
+  // A response that is pending or marked resolved can be confirmed, rated or disputed.
+  const canDisputeResponse = (complaint.companyResponse || complaint.status === 'Resolved') &&
     !complaint.consumerFeedback?.confirmed &&
     !complaint.consumerFeedback?.disputed &&
-    ['Resolution Claimed', 'Response Received', 'Confirmation Pending'].includes(complaint.status);
+    ['Resolution Claimed', 'Response Received', 'Confirmation Pending', 'Resolved'].includes(complaint.status);
 
-  const hasClaimedResolution = ['Resolution Claimed', 'Confirmation Pending'].includes(complaint.status);
+  const hasClaimedResolution = ['Resolution Claimed', 'Confirmation Pending', 'Resolved'].includes(complaint.status);
 
   const submitFeedback = async (mode: 'confirm' | 'dispute') => {
     setSubmitting(true);

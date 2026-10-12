@@ -55,6 +55,7 @@ export interface SessionUser {
   phone: string;
   address: string | null;
   designation: string | null;
+  sectors: string[] | null;
   companyId: string | null;
   companyName: string | null;
   createdAt: Date;
@@ -75,6 +76,14 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
       return null;
     }
     const u = session.user;
+    let sectorsList: string[] | null = null;
+    if (u.sectors) {
+      try {
+        sectorsList = JSON.parse(u.sectors);
+      } catch {
+        sectorsList = null;
+      }
+    }
     return {
       id: u.id,
       role: u.role as UserRole,
@@ -83,6 +92,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
       phone: u.phone,
       address: u.address,
       designation: u.designation,
+      sectors: sectorsList,
       companyId: u.companyId,
       companyName: u.company?.name ?? null,
       createdAt: u.createdAt,

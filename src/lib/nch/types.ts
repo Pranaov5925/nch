@@ -209,6 +209,7 @@ export interface User {
   companyId?: string;
   companyName?: string;
   designation?: string;
+  sectors?: string[];
 }
 
 export interface Notification {

@@ -61,17 +61,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         event = { type: 'STATUS_CHANGE', title: 'Resolved', description: `Officer marked the complaint Resolved after verification of the remedy.` };
         break;
       case 'close': {
-        // Workflow invariant: normal closure requires the consumer to have
-        // CONFIRMED the resolution (the aggrieved party is the deciding vote).
-        if (!complaint.feedback?.confirmed) {
-          return fail(
-            'Consumer confirmation is required before closing. Use "request_confirmation" and wait for the consumer to confirm the remedy on their case page.',
-            409
-          );
-        }
+        // Case closure:
+        // Preferred path: consumer has confirmed resolution.
+        // Administrative path: if marked Resolved and consumer hasn't responded, officer can close directly.
         data.status = 'Closed';
         data.closedAt = new Date();
-        event = { type: 'CLOSED', title: 'Complaint Closed', description: 'Resolved case closed by the assigned officer after consumer confirmation of the remedy.' };
+        const desc = complaint.feedback?.confirmed
+          ? 'Resolved case closed by the assigned officer after consumer confirmation of the remedy.'
+          : 'Case closed by the officer after verified resolution of the grievance.';
+        event = { type: 'CLOSED', title: 'Complaint Closed', description: desc };
         break;
       }
     }

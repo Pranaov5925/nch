@@ -13,6 +13,7 @@ export async function GET() {
         email: user.email,
         phone: user.phone,
         designation: user.designation,
+        sectors: user.sectors,
         companyId: user.companyId,
         companyName: user.companyName,
         createdAt: user.createdAt.toISOString(),

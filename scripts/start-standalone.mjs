@@ -5,5 +5,6 @@ import { join } from 'node:path';
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 process.env.HOSTNAME = '0.0.0.0';
+process.env.PORT = process.env.PORT || '10000';
 
 await import(pathToFileURL(join(process.cwd(), '.next', 'standalone', 'server.js')).href);

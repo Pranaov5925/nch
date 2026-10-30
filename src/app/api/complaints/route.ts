@@ -31,11 +31,11 @@ export async function GET(req: NextRequest) {
       // Sector-based routing:
       // Officer sees:
       // 1. All complaints directly assigned to them (regardless of sector)
-      // 2. Unassigned complaints matching ONLY their specialized sectors
+      // 2. Unassigned complaints matching their specialized sectors (or all unassigned if general officer)
       const officerSectors = user.sectors;
       const unassignedCondition = (officerSectors && officerSectors.length > 0)
         ? { assignedOfficerId: null, sector: { in: officerSectors } }
-        : { assignedOfficerId: '__none__' };
+        : { assignedOfficerId: null };
 
       where.OR = [{ assignedOfficerId: user.id }, unassignedCondition];
     }
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
         const officerSectors = user.sectors;
         const unassignedCondition = (officerSectors && officerSectors.length > 0)
           ? { assignedOfficerId: null, sector: { in: officerSectors } }
-          : { assignedOfficerId: '__none__' };
+          : { assignedOfficerId: null };
 
         delete where.OR;
         where.AND = [

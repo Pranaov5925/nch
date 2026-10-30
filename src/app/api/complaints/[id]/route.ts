@@ -26,7 +26,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       (user.role === 'company' && (complaint.companyId !== user.companyId || isCompanyHiddenStatus(complaint.status))) ||
       (user.role === 'officer' && (
         (complaint.assignedOfficerId !== null && complaint.assignedOfficerId !== user.id) ||
-        (complaint.assignedOfficerId === null && (!user.sectors || !user.sectors.includes(complaint.sector)))
+        (complaint.assignedOfficerId === null && user.sectors && user.sectors.length > 0 && !user.sectors.includes(complaint.sector))
       ))
     ) {
       return fail('You do not have access to this complaint', 403);

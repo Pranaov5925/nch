@@ -31,7 +31,10 @@ export default function OfficerComplaintDetail() {
 
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [remarkText, setRemarkText] = useState('');
+  const [isPublicRemark, setIsPublicRemark] = useState(false);
   const [forwardOpen, setForwardOpen] = useState(false);
+  const [flagModalOpen, setFlagModalOpen] = useState(false);
+  const [flagReasonText, setFlagReasonText] = useState('');
   const [remarkSaved, setRemarkSaved] = useState(false);
   const [actionBusy, setActionBusy] = useState('');
   const [actionError, setActionError] = useState('');
@@ -62,15 +65,19 @@ export default function OfficerComplaintDetail() {
   const amountFormatted = complaint.amount?.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
   const fmtShort = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
-  const runAction = async (action: string) => {
+  const runAction = async (action: string, extra?: Record<string, unknown>) => {
     setActionBusy(action);
     setActionError('');
     try {
       const res = await api<{ complaint: Complaint }>(`/api/complaints/${complaint.id}/action`, {
         method: 'POST',
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, ...extra }),
       });
       setData({ complaint: res.complaint });
+      if (action === 'flag_escalation') {
+        setFlagModalOpen(false);
+        setFlagReasonText('');
+      }
     } catch (err) {
       setActionError((err as Error).message);
     } finally {
@@ -100,9 +107,10 @@ export default function OfficerComplaintDetail() {
     try {
       await api(`/api/complaints/${complaint.id}/remarks`, {
         method: 'POST',
-        body: JSON.stringify({ remark: remarkText, isInternal: true }),
+        body: JSON.stringify({ remark: remarkText, isInternal: !isPublicRemark }),
       });
       setRemarkText('');
+      setIsPublicRemark(false);
       setRemarkSaved(true);
       setTimeout(() => setRemarkSaved(false), 3000);
       await refetch();
@@ -163,7 +171,9 @@ export default function OfficerComplaintDetail() {
   // a non-resolution company response (Under Process / Rejected) must not be
   // overridden into "Resolved" by the officer; ask the consumer or follow up.
   const canMarkResolved = ['Confirmation Pending', 'Action Pending', 'Escalated'].includes(complaint.status);
-  const canClose = complaint.status === 'Resolved';
+  const isConsumerConfirmed = !!complaint.consumerFeedback?.confirmed;
+  const canClose = complaint.status === 'Resolved' && (isConsumerConfirmed || user?.role === 'supervisor');
+  const canFlagEscalation = !complaint.escalation && ['Under Review', 'Forwarded', 'Awaiting Response', 'Response Received', 'Action Pending', 'Resolution Claimed', 'Confirmation Pending', 'Reopened'].includes(complaint.status);
 
   const tabs: Array<{ id: TabId; label: string; count?: number }> = [
     { id: 'overview', label: 'Overview' },
@@ -256,6 +266,16 @@ export default function OfficerComplaintDetail() {
               {canClose && (
                 <Button size="sm" variant="ghost" icon={<XCircle size={13} />} loading={actionBusy === 'close'} onClick={() => runAction('close')}>
                   Close Case
+                </Button>
+              )}
+              {complaint.status === 'Resolved' && !isConsumerConfirmed && user?.role === 'officer' && (
+                <span className="inline-flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2.5 py-1">
+                  <Clock size={12} /> Awaiting consumer confirmation to close
+                </span>
+              )}
+              {canFlagEscalation && (
+                <Button size="sm" variant="outline" className="border-rose-300 text-rose-700 hover:bg-rose-50" icon={<ShieldAlert size={13} />} onClick={() => setFlagModalOpen(true)}>
+                  Flag for Escalation
                 </Button>
               )}
               {complaint.status === 'Escalation Review' && (
@@ -480,12 +500,12 @@ export default function OfficerComplaintDetail() {
                 </div>
               )}
 
-              {/* Officer Remarks (Internal) */}
+              {/* Officer Remarks */}
               {activeTab === 'remarks' && (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-xs text-slate-500 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-                    <Lock size={12} className="text-amber-600 shrink-0" />
-                    <span>Officer remarks are internal and not visible to the consumer or company.</span>
+                  <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded px-3 py-2">
+                    <Info size={12} className="text-slate-500 shrink-0" />
+                    <span>Officer remarks can be marked as Internal (staff only) or Shared with the consumer.</span>
                   </div>
 
                   {complaint.officerRemarks.length === 0 ? (
@@ -494,32 +514,48 @@ export default function OfficerComplaintDetail() {
                     <ul className="space-y-3">
                       {complaint.officerRemarks.map(rem => (
                         <li key={rem.id} className="border border-slate-200 rounded p-4">
-                          <p className="text-sm text-slate-700 leading-relaxed">{rem.remark}</p>
-                          <p className="text-xs text-slate-400 mt-2">{rem.officerName} · {rem.date}, {rem.time}</p>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className={`text-2xs font-medium px-2 py-0.5 rounded ${rem.isInternal ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-sky-50 text-sky-700 border border-sky-200'}`}>
+                              {rem.isInternal ? 'Internal Note' : 'Shared with Consumer'}
+                            </span>
+                            <span className="text-xs text-slate-400">{rem.officerName} · {rem.date}, {rem.time}</span>
+                          </div>
+                          <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{rem.remark}</p>
                         </li>
                       ))}
                     </ul>
                   )}
 
                   <div className="border-t border-slate-100 pt-4">
-                    <p className="text-xs font-medium text-slate-700 mb-2">Add Internal Remark</p>
+                    <p className="text-xs font-medium text-slate-700 mb-2">Add Officer Remark / Update</p>
                     <Textarea
                       value={remarkText}
                       onChange={e => setRemarkText(e.target.value)}
-                      placeholder="Add internal notes, observations, or follow-up actions…"
+                      placeholder="Add notes, observations, or instructions for the consumer…"
                       rows={3}
                     />
-                    <div className="mt-2 flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        disabled={!remarkText.trim()}
-                        loading={actionBusy === 'remark'}
-                        onClick={saveRemark}
-                      >
-                        Save Remark
-                      </Button>
-                      {remarkSaved && <span className="text-xs text-green-600">✓ Remark saved</span>}
+                    <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3">
+                      <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={isPublicRemark}
+                          onChange={e => setIsPublicRemark(e.target.checked)}
+                          className="rounded border-slate-300 text-nch-blue-600 focus:ring-nch-blue-500"
+                        />
+                        <span>Share this update with the consumer (visible on Consumer Portal)</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          disabled={!remarkText.trim()}
+                          loading={actionBusy === 'remark'}
+                          onClick={saveRemark}
+                        >
+                          Save Remark
+                        </Button>
+                        {remarkSaved && <span className="text-xs text-green-600">✓ Remark saved</span>}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -702,6 +738,46 @@ export default function OfficerComplaintDetail() {
               />
             </div>
           )}
+        </div>
+      </Modal>
+
+      {/* Flag for Escalation Modal */}
+      <Modal
+        open={flagModalOpen}
+        onClose={() => setFlagModalOpen(false)}
+        title="Flag Case for Supervisor Escalation Review"
+        footer={
+          <>
+            <Button size="sm" variant="outline" onClick={() => setFlagModalOpen(false)}>Cancel</Button>
+            <Button
+              size="sm"
+              variant="danger"
+              disabled={!flagReasonText.trim()}
+              loading={actionBusy === 'flag_escalation'}
+              icon={<ShieldAlert size={14} />}
+              onClick={() => runAction('flag_escalation', { reason: flagReasonText })}
+            >
+              Submit Escalation Flag
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <AlertBanner type="warning">
+            Flagging this complaint escalates it directly to the <strong>Supervisor Escalation Monitoring</strong> queue with urgent priority. The supervisor will review your report and decide whether to issue a formal executive compliance order to the organization.
+          </AlertBanner>
+          <div>
+            <label className="text-xs font-medium text-slate-700 block mb-1">
+              Reason for Escalation Review <span className="text-red-500">*</span>
+            </label>
+            <Textarea
+              value={flagReasonText}
+              onChange={e => setFlagReasonText(e.target.value)}
+              placeholder="Detail the non-compliance, fraud, company failure, or specific justification for supervisor intervention…"
+              rows={4}
+              required
+            />
+          </div>
         </div>
       </Modal>
 

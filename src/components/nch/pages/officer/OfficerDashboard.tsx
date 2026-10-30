@@ -60,26 +60,27 @@ export default function OfficerDashboard() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5 mb-8">
         <StatCard label="Assigned to Me" value={assigned.length} />
-        <StatCard label="Pending Cases" value={pending.length} accent />
+        <StatCard label="Pending in My Cases" value={pending.length} accent />
+        <StatCard label="Unassigned in My Sectors" value={pool.length} sub={user?.sectors?.length ? user.sectors.join(', ') : 'All sectors'} />
         <StatCard label="Resolved This Month" value={resolvedThisMonth} sub="This month" />
-        <StatCard label="Avg. Resolution" value={`${avgDays || '—'} days`} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Assigned complaints */}
+        {/* Assigned and Pool complaints */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Active Assigned Cases */}
           <SectionCard
-            title="My Casebook (assigned + unassigned pool)"
+            title={`My Assigned Casebook (${assigned.length})`}
             actions={
-              <Link to="/officer/queue" className="text-xs text-nch-blue-600 hover:text-nch-blue-800 font-semibold">
-                Full queue →
+              <Link to="/officer/queue?assigned=me" className="text-xs text-nch-blue-600 hover:text-nch-blue-800 font-semibold">
+                View my cases →
               </Link>
             }
             noPad
           >
             <ul className="divide-y divide-slate-100">
-              {assignedShow.map(c => (
+              {assigned.slice(0, 5).map(c => (
                 <li key={c.id}>
                   <Link to={`/officer/complaints/${c.id}`} className="flex items-start gap-4 px-5 py-4 hover:bg-slate-50/80 transition-colors">
                     <div className="flex-1 min-w-0">
@@ -93,15 +94,57 @@ export default function OfficerDashboard() {
                         <span>{c.consumerName}</span>
                         <span>·</span>
                         <span>{c.companyName}</span>
-                        {!c.assignedOfficerId && <span className="text-nch-blue-600 font-semibold">· unassigned</span>}
+                        <span>·</span>
+                        <span className="text-slate-600 font-medium">{c.sector}</span>
                       </div>
                     </div>
                     <PriorityBadge priority={c.priority} size="sm" />
                   </Link>
                 </li>
               ))}
-              {assignedShow.length === 0 && (
-                <li className="px-5 py-12 text-center text-sm text-slate-400">No complaints in your queue yet.</li>
+              {assigned.length === 0 && (
+                <li className="px-5 py-10 text-center text-sm text-slate-400">No complaints currently assigned to you.</li>
+              )}
+            </ul>
+          </SectionCard>
+
+          {/* Unassigned Domain Pool */}
+          <SectionCard
+            title={`Unassigned Domain Pool (${pool.length})`}
+            actions={
+              <Link to="/officer/queue?assigned=unassigned" className="text-xs text-nch-blue-600 hover:text-nch-blue-800 font-semibold">
+                Available pool →
+              </Link>
+            }
+            noPad
+          >
+            <div className="px-5 py-2.5 bg-blue-50/50 border-b border-blue-100 text-xs text-blue-800 flex items-center justify-between">
+              <span>Cases matching your specialized domain: <strong>{user?.sectors?.length ? user.sectors.join(', ') : 'All sectors'}</strong></span>
+            </div>
+            <ul className="divide-y divide-slate-100">
+              {pool.slice(0, 5).map(c => (
+                <li key={c.id}>
+                  <Link to={`/officer/complaints/${c.id}`} className="flex items-start gap-4 px-5 py-3.5 hover:bg-slate-50/80 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-3 mb-1">
+                        <p className="text-sm font-semibold text-slate-800 line-clamp-1">{c.subject}</p>
+                        <StatusBadge status={c.status} size="sm" />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-400">
+                        <span className="font-mono">{c.docketNumber}</span>
+                        <span>·</span>
+                        <span>{c.companyName}</span>
+                        <span>·</span>
+                        <span className="text-nch-blue-600 font-semibold">{c.sector}</span>
+                        <span className="text-amber-600 font-medium bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">Unassigned</span>
+                      </div>
+                    </div>
+                    <PriorityBadge priority={c.priority} size="sm" />
+                  </Link>
+                </li>
+              ))}
+              {pool.length === 0 && (
+                <li className="px-5 py-8 text-center text-sm text-slate-400">No unassigned complaints in your sectors.</li>
               )}
             </ul>
           </SectionCard>

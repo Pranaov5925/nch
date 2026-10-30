@@ -12,7 +12,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const user = await requireRole('officer', 'supervisor');
     const { id } = await params;
-    const { action } = await req.json();
+    const { action, reason } = await req.json();
     const complaint = await db.complaint.findUnique({
       where: { id },
       include: { consumer: true, company: true, feedback: true },
@@ -61,15 +61,37 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         event = { type: 'STATUS_CHANGE', title: 'Resolved', description: `Officer marked the complaint Resolved after verification of the remedy.` };
         break;
       case 'close': {
-        // Case closure:
-        // Preferred path: consumer has confirmed resolution.
-        // Administrative path: if marked Resolved and consumer hasn't responded, officer can close directly.
+        // Enforce consumer confirmation: an officer cannot unilaterally close a resolved case
+        // unless the aggrieved consumer has confirmed the remedy. Supervisors retain administrative override.
+        if (user.role === 'officer' && !complaint.feedback?.confirmed) {
+          return fail(
+            'Case cannot be closed by an officer until the consumer confirms the resolution. If the consumer is unresponsive, a supervisor can authorize administrative closure.',
+            409
+          );
+        }
         data.status = 'Closed';
         data.closedAt = new Date();
         const desc = complaint.feedback?.confirmed
-          ? 'Resolved case closed by the assigned officer after consumer confirmation of the remedy.'
-          : 'Case closed by the officer after verified resolution of the grievance.';
+          ? 'Resolved case closed after consumer confirmation of the remedy.'
+          : 'Case closed administratively by the supervisor.';
         event = { type: 'CLOSED', title: 'Complaint Closed', description: desc };
+        break;
+      }
+      case 'flag_escalation': {
+        if (complaint.escalationFlagged) {
+          return fail('This complaint is already flagged for escalation review', 409);
+        }
+        const flagReason = String(reason ?? '').trim() || 'Officer flagged for supervisor escalation review';
+        const reasons: string[] = complaint.escalationReasons ? JSON.parse(complaint.escalationReasons) : [];
+        reasons.push(`Officer flag: ${flagReason}`);
+        data.escalationFlagged = true;
+        data.escalationReasons = JSON.stringify(reasons);
+        data.escalationDismissedAt = null;
+        event = {
+          type: 'ESCALATION_FLAG',
+          title: 'Flagged for Escalation Review (Officer)',
+          description: `Case flagged by ${actorName}: "${flagReason}". Awaiting supervisor review.`,
+        };
         break;
       }
     }
@@ -80,6 +102,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       complaintId: id, ...event!,
       actorName, actorRole: user.role === 'supervisor' ? 'Supervisor' : 'NCH Officer',
     });
+
+    if (action === 'flag_escalation') {
+      const supervisors = await db.user.findMany({ where: { role: 'supervisor' }, select: { id: true } });
+      for (const s of supervisors) {
+        await notify({
+          userId: s.id,
+          type: 'warning',
+          title: 'Officer flagged complaint for review',
+          detail: `${complaint.docketNumber} — flagged by ${actorName}. Supervisor decision required.`,
+          link: '/supervisor/escalations',
+        });
+      }
+    }
 
     // notify consumer on consumer-visible transitions
     if (['forward', 'request_confirmation', 'mark_resolved', 'close'].includes(action)) {

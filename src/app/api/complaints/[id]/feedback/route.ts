@@ -18,8 +18,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const complaint = await db.complaint.findUnique({ where: { id }, include: { company: true } });
     if (!complaint) return fail('Complaint not found', 404);
     if (complaint.consumerId !== user.id) return fail('Not your complaint', 403);
-    if (!['Confirmation Pending', 'Response Received', 'Resolution Claimed', 'Resolved'].includes(complaint.status)) {
+    if (!['Confirmation Pending', 'Response Received', 'Resolution Claimed', 'Resolved', 'Closed'].includes(complaint.status)) {
       return fail(`Feedback is not possible while the complaint is "${complaint.status}"`, 409);
+    }
+    if (complaint.status === 'Closed' && !disputed) {
+      return fail('This case is closed. You may dispute the resolution to reopen the case if the issue is unresolved.', 409);
     }
     // Confirming a resolution is only meaningful once the organization has
     // actually CLAIMED a resolution (→ "Confirmation Pending") or an officer
@@ -58,19 +61,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     let statusChanged = false;
 
     if (disputed) {
-      // RULE ESC-02 — consumer rejection → Reopened + escalation flag (agreed design).
+      // RULE ESC-02 — consumer rejection / reopen → Reopened + escalation flag (agreed design).
       // New escalation evidence overrides any earlier supervisor dismissal.
       data.status = 'Reopened';
       data.resolvedAt = null;
+      data.closedAt = null;
       data.escalationDismissedAt = null;
       const reasons: string[] = complaint.escalationReasons ? JSON.parse(complaint.escalationReasons) : [];
-      reasons.push('Consumer rejected the proposed resolution (ESC-02)');
+      reasons.push(
+        complaint.status === 'Closed'
+          ? `Consumer reopened closed grievance: "${disputeReason || 'Issue persists'}" (ESC-02)`
+          : 'Consumer rejected the proposed resolution (ESC-02)'
+      );
       data.escalationFlagged = true;
       data.escalationReasons = JSON.stringify(reasons);
       event = {
         type: 'FEEDBACK',
-        title: 'Consumer Rejected Resolution',
-        description: `Consumer disputed the response${disputeReason ? `: "${disputeReason}"` : ''}. Case reopened and flagged for escalation review (Rule ESC-02).`,
+        title: complaint.status === 'Closed' ? 'Consumer Reopened Grievance' : 'Consumer Rejected Resolution',
+        description: `Consumer disputed the resolution${disputeReason ? `: "${disputeReason}"` : ''}. Case reopened and flagged for escalation review (Rule ESC-02).`,
       };
       statusChanged = true;
     } else if (confirmed) {

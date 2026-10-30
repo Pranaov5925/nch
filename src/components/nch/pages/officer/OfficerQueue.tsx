@@ -3,7 +3,7 @@
 // NCH 3.0 — Officer Complaint Queue (ported; live data)
 
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Search, Filter, X } from 'lucide-react';
 import { AppLayout, PageHeader, LoadingBlock, ErrorBlock } from '@/components/nch/AppLayout';
 import { StatusBadge, PriorityBadge, Table, Thead, Tbody, Tr, Th, Td, EmptyState, Input, Select, Button } from '@/components/nch/ui';
@@ -22,6 +22,9 @@ const PRIORITIES: Priority[] = ['Critical', 'High', 'Medium', 'Low'];
 
 export default function OfficerQueue() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const assignedParam = searchParams.get('assigned'); // 'me' | 'unassigned' | null
+
   const { data, loading, error, refetch } = useFetch<{ complaints: Complaint[] }>('/api/complaints');
   const complaints = data?.complaints ?? [];
   const SECTORS = useMemo(() => Array.from(new Set(complaints.map(c => c.sector))), [complaints]);
@@ -30,8 +33,14 @@ export default function OfficerQueue() {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('');
   const [sectorFilter, setSectorFilter] = useState<string>('');
+  const [assignmentTab, setAssignmentTab] = useState<'all' | 'mine' | 'unassigned'>(
+    assignedParam === 'me' ? 'mine' : assignedParam === 'unassigned' ? 'unassigned' : 'all'
+  );
   const [page, setPage] = useState(1);
   const PER_PAGE = 10;
+
+  const countMine = useMemo(() => complaints.filter(c => c.assignedOfficerId === user?.id).length, [complaints, user?.id]);
+  const countUnassigned = useMemo(() => complaints.filter(c => !c.assignedOfficerId).length, [complaints]);
 
   const filtered = useMemo(() => {
     return complaints.filter(c => {
@@ -44,9 +53,13 @@ export default function OfficerQueue() {
       const matchStatus = !statusFilter || c.status === statusFilter;
       const matchPriority = !priorityFilter || c.priority === priorityFilter;
       const matchSector = !sectorFilter || c.sector === sectorFilter;
-      return matchQuery && matchStatus && matchPriority && matchSector;
+      const matchAssignment =
+        assignmentTab === 'mine' ? c.assignedOfficerId === user?.id
+        : assignmentTab === 'unassigned' ? !c.assignedOfficerId
+        : true;
+      return matchQuery && matchStatus && matchPriority && matchSector && matchAssignment;
     });
-  }, [complaints, query, statusFilter, priorityFilter, sectorFilter]);
+  }, [complaints, query, statusFilter, priorityFilter, sectorFilter, assignmentTab, user?.id]);
 
   const totalPages = Math.ceil(filtered.length / PER_PAGE);
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
@@ -62,6 +75,40 @@ export default function OfficerQueue() {
         title="Complaint Queue"
         subtitle={`${filtered.length} complaint${filtered.length !== 1 ? 's' : ''} ${hasFilters ? '(filtered)' : 'total'}${officerSectors && officerSectors.length > 0 ? ` · Specialized Sectors: ${officerSectors.join(', ')}` : ''}`}
       />
+
+      {/* Assignment Scope Tabs */}
+      <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1">
+        <button
+          onClick={() => { setAssignmentTab('all'); setPage(1); }}
+          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors shrink-0 ${
+            assignmentTab === 'all'
+              ? 'bg-slate-900 text-white'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          All Domain Cases ({complaints.length})
+        </button>
+        <button
+          onClick={() => { setAssignmentTab('mine'); setPage(1); }}
+          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors shrink-0 ${
+            assignmentTab === 'mine'
+              ? 'bg-nch-blue-700 text-white'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          Assigned to Me ({countMine})
+        </button>
+        <button
+          onClick={() => { setAssignmentTab('unassigned'); setPage(1); }}
+          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors shrink-0 ${
+            assignmentTab === 'unassigned'
+              ? 'bg-amber-600 text-white'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          Unassigned Sector Pool ({countUnassigned})
+        </button>
+      </div>
 
       {/* Filters */}
       <div className="bg-white border border-slate-200 rounded p-3 mb-4">

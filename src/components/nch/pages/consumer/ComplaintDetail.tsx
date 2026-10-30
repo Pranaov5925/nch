@@ -15,7 +15,7 @@ import { DocumentPreviewModal } from '@/components/nch/DocumentPreviewModal';
 import { api, useFetch } from '@/lib/nch/client';
 import type { Complaint, Document } from '@/lib/nch/types';
 
-type TabId = 'overview' | 'timeline' | 'documents' | 'response';
+type TabId = 'overview' | 'timeline' | 'documents' | 'response' | 'remarks';
 
 export default function ComplaintDetail() {
   const { id } = useParams<{ id: string }>();
@@ -63,11 +63,10 @@ export default function ComplaintDetail() {
     !complaint.consumerFeedback?.disputed &&
     ['Resolution Claimed', 'Confirmation Pending', 'Resolved'].includes(complaint.status);
 
-  // A response that is pending or marked resolved can be confirmed, rated or disputed.
-  const canDisputeResponse = (complaint.companyResponse || complaint.status === 'Resolved') &&
-    !complaint.consumerFeedback?.confirmed &&
+  // A response that is pending, marked resolved, or closed can be confirmed, rated or disputed/reopened.
+  const canDisputeResponse = (complaint.companyResponse || ['Resolved', 'Closed'].includes(complaint.status)) &&
     !complaint.consumerFeedback?.disputed &&
-    ['Resolution Claimed', 'Response Received', 'Confirmation Pending', 'Resolved'].includes(complaint.status);
+    ['Resolution Claimed', 'Response Received', 'Confirmation Pending', 'Resolved', 'Closed'].includes(complaint.status);
 
   const hasClaimedResolution = ['Resolution Claimed', 'Confirmation Pending', 'Resolved'].includes(complaint.status);
 
@@ -124,6 +123,9 @@ export default function ComplaintDetail() {
     { id: 'timeline', label: 'Timeline', count: complaint.timeline.length },
     { id: 'documents', label: 'Documents', count: complaint.documents.length },
     { id: 'response', label: 'Responses' },
+    ...(complaint.officerRemarks && complaint.officerRemarks.length > 0
+      ? [{ id: 'remarks' as TabId, label: 'Officer Updates', count: complaint.officerRemarks.length }]
+      : []),
   ];
 
   const amountFormatted = complaint.amount?.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
@@ -142,9 +144,23 @@ export default function ComplaintDetail() {
 
       {/* Action required alert */}
       {canDisputeResponse && !confirmDone && (
-        <AlertBanner type={hasClaimedResolution ? 'warning' : 'info'} title={hasClaimedResolution ? 'Action Required — Review Company Response' : 'Organization Response Received'} className="mb-4">
+        <AlertBanner
+          type={complaint.status === 'Closed' ? 'error' : hasClaimedResolution ? 'warning' : 'info'}
+          title={
+            complaint.status === 'Closed'
+              ? 'Case Closed — Not Satisfied with Remedy?'
+              : hasClaimedResolution
+              ? 'Action Required — Review Company Response'
+              : 'Organization Response Received'
+          }
+          className="mb-4"
+        >
           <p className="mt-1 text-xs">
-            {hasClaimedResolution ? (
+            {complaint.status === 'Closed' ? (
+              <>
+                This grievance was closed by NCH. If the promised remedy was <strong>not fulfilled</strong> or your issue remains unresolved, you can <strong>appeal and reopen</strong> this case for immediate supervisor escalation review.
+              </>
+            ) : hasClaimedResolution ? (
               <>
                 {complaint.companyName} claims your issue is resolved. Please review and either{' '}
                 <strong>confirm the resolution</strong> (if your issue is resolved) or{' '}
@@ -164,7 +180,7 @@ export default function ComplaintDetail() {
               </Button>
             )}
             <Button size="sm" variant="outline" className="border-red-300 text-red-700 hover:bg-red-50" icon={<XCircle size={14} />} onClick={() => setDisputeOpen(true)}>
-              Dispute Response
+              {complaint.status === 'Closed' ? 'Reopen / Appeal Grievance' : 'Dispute Response'}
             </Button>
           </div>
         </AlertBanner>
@@ -433,6 +449,28 @@ export default function ComplaintDetail() {
                   )}
                 </div>
               )}
+
+              {/* Officer Remarks (Shared) */}
+              {activeTab === 'remarks' && (
+                <div className="space-y-3">
+                  <div className="bg-sky-50/70 border border-sky-200 rounded p-3 text-xs text-sky-800">
+                    Official messages and updates shared with you by the assigned NCH Consumer Affairs Officer.
+                  </div>
+                  {complaint.officerRemarks && complaint.officerRemarks.length > 0 ? (
+                    complaint.officerRemarks.map((r) => (
+                      <div key={r.id} className="bg-white border border-slate-200 rounded-lg p-4 shadow-2xs">
+                        <div className="flex items-center justify-between mb-1.5 text-xs">
+                          <span className="font-semibold text-nch-blue-700">{r.officerName} (NCH Officer)</span>
+                          <span className="text-slate-400">{r.date} at {r.time}</span>
+                        </div>
+                        <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{r.remark}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-500 text-center py-8">No shared officer updates yet.</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -524,7 +562,7 @@ export default function ComplaintDetail() {
                     </Button>
                   )}
                   <Button size="sm" variant="outline" className="w-full border-red-300 text-red-700 hover:bg-red-50" icon={<XCircle size={14} />} onClick={() => setDisputeOpen(true)}>
-                    Dispute Response
+                    {complaint.status === 'Closed' ? 'Reopen / Appeal Grievance' : 'Dispute Response'}
                   </Button>
                 </>
               )}
@@ -581,27 +619,32 @@ export default function ComplaintDetail() {
       <Modal
         open={disputeOpen}
         onClose={() => setDisputeOpen(false)}
-        title="Dispute Company Response"
+        title={complaint.status === 'Closed' ? 'Appeal & Reopen Grievance' : 'Dispute Company Response'}
         footer={
           <>
             <Button size="sm" variant="outline" onClick={() => setDisputeOpen(false)}>Cancel</Button>
             <Button size="sm" variant="danger" loading={submitting} icon={<XCircle size={14} />} onClick={() => submitFeedback('dispute')}>
-              Submit Dispute
+              {complaint.status === 'Closed' ? 'Reopen Grievance' : 'Submit Dispute'}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
           <AlertBanner type="warning">
-            By disputing, you indicate that your grievance is <strong>not resolved</strong>. The complaint will be reopened and flagged for escalation review by NCH.
+            {complaint.status === 'Closed'
+              ? 'By reopening, you declare that the grievance remains unfulfilled. The case will immediately transition to Reopened and be flagged for supervisor escalation review.'
+              : 'By disputing, you indicate that your grievance is not resolved. The complaint will be reopened and flagged for escalation review by NCH.'}
           </AlertBanner>
           <div>
-            <p className="text-xs font-medium text-slate-700 mb-1">Reason for dispute <span className="text-red-500">*</span></p>
+            <p className="text-xs font-medium text-slate-700 mb-1">
+              {complaint.status === 'Closed' ? 'Reason for Appeal / Unfulfilled Remedy' : 'Reason for dispute'} <span className="text-red-500">*</span>
+            </p>
             <textarea
-              className="w-full border border-slate-300 rounded px-3 py-2 text-sm text-slate-700 resize-none min-h-24 focus:outline-none focus:ring-2 focus:ring-red-400"
-              placeholder="Please clearly state why the company's response is unsatisfactory and what resolution you still expect…"
+              className="w-full border border-slate-300 rounded px-3 py-2 text-sm text-slate-700 resize-none min-h-24 focus:outline-none focus:ring-2 focus:ring-nch-blue-500"
+              placeholder={complaint.status === 'Closed' ? 'Describe what was promised vs what was not delivered…' : 'Explain why the proposed resolution is not acceptable…'}
               value={disputeReason}
               onChange={e => setDisputeReason(e.target.value)}
+              required
             />
           </div>
         </div>

@@ -117,6 +117,7 @@ export const OFFICER_TRANSITIONS: Record<string, string[]> = {
   mark_resolved: ['Confirmation Pending', 'Action Pending', 'Escalated'],
   close: ['Resolved'],
   request_confirmation: ['Response Received', 'Resolution Claimed'],
+  flag_escalation: ['Under Review', 'Forwarded', 'Awaiting Response', 'Response Received', 'Action Pending', 'Resolution Claimed', 'Confirmation Pending', 'Reopened'],
 };
 
 export const AI_DISCLAIMER =
